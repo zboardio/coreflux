@@ -1,0 +1,70 @@
+# Zigbee2MQTT + Sonoff USB dongle -> Coreflux UNS: the quick-start stack.
+#
+#   cp .env.example .env            # then fill in ZIGBEE_DONGLE and COREFLUX_SECRET_KEY
+#   mkdir -p z2m-data
+#   cp ../zigbee2mqtt/configuration.yaml ../zigbee2mqtt/secret.yaml.example z2m-data/
+#   mv z2m-data/secret.yaml.example z2m-data/secret.yaml   # set the MQTT password in it
+#   docker compose up -d coreflux-broker coreflux-hub         # broker + Hub first, see the README
+#   docker compose up -d zigbee2mqtt                          # after the zigbee2mqtt account exists
+#
+# Three services on one network. Zigbee2MQTT reaches the broker by its service name, the Hub
+# proxies MQTT server-side (New Connection -> Host `coreflux-broker`, not `localhost`).
+#
+# The dongle mapping below is the quick-start form. A container's `devices:` entry is resolved
+# ONCE, when the container is created: if the dongle re-enumerates (another USB port, a replug, a
+# kernel update changing probe order) the container keeps a mapping to a device that is no longer
+# the coordinator, until it is recreated. Mapping the /dev/serial/by-id/ path does not change that,
+# the symlink is resolved at the same moment. For an unattended gateway use the host install in
+# ../host-install/ (README > Production readiness), which follows the dongle instead.
+#
+# Every port binds 127.0.0.1. Open 1883 to your devices' network deliberately, and never expose the
+# Z2M frontend without `frontend.auth_token`.
+
+services:
+  coreflux-broker:
+    image: coreflux/coreflux-mqtt-broker:2.14.3
+    restart: unless-stopped
+    # broker-config.json is FORCED on every start: anonymous login off, durability on. A fresh
+    # 2.14 install otherwise writes its own first-run config with anonymous login ON.
+    command: ["--config", "/config/broker-config.json", "--config-force"]
+    environment:
+      - COREFLUX_DURABILITY_ENABLED=true
+      # Encrypts the broker's secret store. Unset, the key is derived from the machine and a
+      # restore onto other hardware can no longer decrypt any secret. Generate once, keep it.
+      - COREFLUX_SECRET_KEY=${COREFLUX_SECRET_KEY:?set COREFLUX_SECRET_KEY in .env}
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - coreflux_broker_data:/etc/project
+      - ./broker-config.json:/config/broker-config.json:ro
+
+  coreflux-hub:
+    image: coreflux/coreflux-hub:2.3.4
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - coreflux_hub_data:/opt/coreflux-hub/data
+
+  zigbee2mqtt:
+    image: ghcr.io/koenkk/zigbee2mqtt:2.14.2
+    restart: unless-stopped
+    depends_on:
+      - coreflux-broker
+    environment:
+      - TZ=${TZ:-UTC}
+    devices:
+      # The dongle by its stable by-id path on the host, never /dev/ttyUSB0 (enumeration order).
+      - ${ZIGBEE_DONGLE:?set ZIGBEE_DONGLE in .env}:/dev/zigbee
+    volumes:
+      # configuration.yaml, secret.yaml, the device database and coordinator_backup.json.
+      # After the first start this folder holds the Zigbee network key: back it up, never commit it.
+      - ./z2m-data:/app/data
+      # Lets Z2M recognise the adapter; read-only.
+      - /run/udev:/run/udev:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+
+volumes:
+  coreflux_broker_data:
+  coreflux_hub_data:

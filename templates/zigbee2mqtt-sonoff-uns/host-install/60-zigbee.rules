@@ -1,0 +1,33 @@
+# Zigbee coordinator: one stable device name, ModemManager kept off the port, and the service
+# started and stopped with the dongle. Install as /etc/udev/rules.d/60-zigbee.rules, then
+#   sudo udevadm control --reload && sudo udevadm trigger
+#
+# Read your dongle's values with:
+#   udevadm info -a -n /dev/ttyUSB0 | grep -E 'idVendor|idProduct|\{serial\}'
+#   (a Dongle Plus MG24 / Max / Lite may enumerate as /dev/ttyACM0)
+#
+# Why each clause is here:
+#
+#   ATTRS{serial}          pins the rule to THIS dongle. Without it the rule matches any adapter
+#                          with the same USB bridge (10c4:ea60 is a common CP210x), and a second one
+#                          would race for the name. Replacing the dongle = editing this one value.
+#
+#   SYMLINK+="zigbee"      the name configuration.yaml uses (/dev/zigbee). Enumeration names
+#                          (/dev/ttyUSB0) change when the dongle moves port or another serial
+#                          device appears; never put one in a config file.
+#
+#   ID_MM_DEVICE_IGNORE    ModemManager (installed by default on many desktop and some server
+#                          images) probes new serial devices with AT commands. That is a race with
+#                          whatever opens the port first, so it shows up as an INTERMITTENT failure
+#                          to start or a coordinator that answers garbage, not as a clean error.
+#
+#   TAG+="systemd"         makes systemd publish dev-zigbee.device, which zigbee2mqtt.service binds
+#   SYSTEMD_WANTS          to: unplug stops the service cleanly, replug (any port) starts it again.
+#                          This is what a container's `devices:` mapping cannot do.
+#
+# Replace idVendor/idProduct/serial with your dongle's values:
+#   ZBDongle-P (CC2652P)          10c4 / ea60
+#   ZBDongle-E (EFR32MG21)        1a86 / 55d4  (CH9102 bridge) or 10c4 / ea60 (CP210x bridge)
+#   Dongle Plus MG24, Max, Lite   10c4 / ea60
+
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="REPLACE_WITH_YOUR_DONGLE_SERIAL", SYMLINK+="zigbee", ENV{ID_MM_DEVICE_IGNORE}="1", TAG+="systemd", ENV{SYSTEMD_WANTS}="zigbee2mqtt.service"

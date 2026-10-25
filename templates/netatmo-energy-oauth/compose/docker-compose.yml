@@ -1,0 +1,42 @@
+# Netatmo Energy over REST, OAuth 2 on the broker: the quick-start stack.
+#
+#   cp .env.example .env            # set COREFLUX_SECRET_KEY first (the generator is in the file)
+#   docker compose up -d
+#
+# Hub: http://localhost:3000 -> New Connection -> Host `coreflux-broker`, port 1883 (not
+# `localhost`: the Hub connects server-side). Change the default root password before anything else.
+#
+# The broker needs outbound HTTPS to api.netatmo.com. No inbound port is needed for Netatmo.
+
+services:
+  coreflux-broker:
+    image: coreflux/coreflux-mqtt-broker:2.14.3
+    restart: unless-stopped
+    # broker-config.json is FORCED on every start: anonymous login off, durability on. The Route's
+    # answers are published under an empty user name, which is also what an anonymous client
+    # presents, so the solution's Rule 2 is only sound with anonymous login off.
+    command: ["--config", "/config/broker-config.json", "--config-force"]
+    environment:
+      - COREFLUX_DURABILITY_ENABLED=true
+      # Encrypts the secret store that holds the Netatmo tokens. Unset, the key is derived from
+      # the machine: a restore onto other hardware can no longer decrypt the tokens, and the chain
+      # is locked out at the next refresh. Generate once, keep it in your password manager.
+      - COREFLUX_SECRET_KEY=${COREFLUX_SECRET_KEY:?set COREFLUX_SECRET_KEY in .env}
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      # The secret store, the durability WAL and the notebooks' state live here: back it up.
+      - coreflux_broker_data:/etc/project
+      - ./broker-config.json:/config/broker-config.json:ro
+
+  coreflux-hub:
+    image: coreflux/coreflux-hub:2.3.4
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - coreflux_hub_data:/opt/coreflux-hub/data
+
+volumes:
+  coreflux_broker_data:
+  coreflux_hub_data:

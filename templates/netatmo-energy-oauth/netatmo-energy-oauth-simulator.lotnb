@@ -1,0 +1,42 @@
+[
+ {
+  "kind": 1,
+  "language": "markdown",
+  "value": "# Netatmo Energy over REST, OAuth 2 on the broker — simulator\n\nA hardware-free, account-free stand-in for the Netatmo cloud. It plays the part of the solution's\n**Route**: it listens on the same request topics and answers on the same answer topics, with the\nsame JSON Netatmo returns. The solution's ticks, fan-out, room map, UNS leaves and setpoint commands\nthen run unchanged. One home, three rooms: two with a radiator valve each, and an office that is\ndeliberately **not** in the example room map, so you can see the unmapped path.\n\n**Deploy the solution without its Route cell**, then this notebook. With the Route deployed, both\nwould answer every request. No secrets are needed: the token chain is the one part this simulator\ndoes not exercise. Remove these actions, deploy the Route and enter the secrets once you have a\nNetatmo app.\n\n| Request topic (from the solution) | Simulated answer |\n|---|---|\n| `netatmo/_api/homesdata/request` | the home structure: rooms, valves, the relay |\n| `netatmo/_api/homestatus/request` | live room values; temperatures wander, `heating_power_request` follows the setpoint |\n| `netatmo/_api/setroomthermpoint/request` | `{\"status\":\"ok\"}`, and the room switches to `manual` at the requested temperature |\n\nThe setpoints live in broker-internal state (`KEEP TOPIC \"sim/netatmo/setpoints\"`), so a command is\nvisible on the next simulated poll, as it would be with the real API.\n\n## Python"
+ },
+ {
+  "kind": 2,
+  "language": "python",
+  "value": "# Script Name: NetatmoSim\nimport json\nimport random\nimport time\n\nHOME = \"65f0c0ffee0000000000c0de\"\nRELAY = \"70:ee:50:aa:00:01\"\nROOMS = [(\"1001\", \"Living room\", \"livingroom\", \"09:00:00:aa:00:01\", 21.2),\n         (\"1002\", \"Bedroom\", \"bedroom\", \"09:00:00:aa:00:02\", 19.4),\n         (\"1003\", \"Office\", \"office\", None, 20.1)]\n\n\ndef _state(text):\n    try:\n        return json.loads(text) if text else {}\n    except ValueError:\n        return {}\n\n\ndef homesdata(_request=None):\n    rooms = [{\"id\": rid, \"name\": name, \"type\": kind, \"module_ids\": [valve] if valve else []}\n             for rid, name, kind, valve, _t in ROOMS]\n    modules = [{\"id\": RELAY, \"type\": \"NAPlug\", \"name\": \"Relay\",\n                \"modules_bridged\": [v for *_r, v, _t in ROOMS if v]}]\n    modules += [{\"id\": valve, \"type\": \"NRV\", \"name\": \"Valve \" + name, \"room_id\": rid, \"bridge\": RELAY}\n                for rid, name, _k, valve, _t in ROOMS if valve]\n    return json.dumps({\"body\": {\"homes\": [{\"id\": HOME, \"name\": \"Example home\", \"timezone\": \"Europe/Berlin\",\n                                           \"therm_setpoint_default_duration\": 180, \"therm_mode\": \"schedule\",\n                                           \"rooms\": rooms, \"modules\": modules}]},\n                       \"status\": \"ok\", \"time_exec\": 0.02, \"time_server\": int(time.time())})\n\n\ndef homestatus(state):\n    sp = _state(state)\n    rooms, modules = [], [{\"id\": RELAY, \"type\": \"NAPlug\", \"firmware_revision\": 254, \"rf_strength\": 107,\n                           \"wifi_strength\": 52}]\n    for n, (rid, _name, _kind, valve, base) in enumerate(ROOMS):\n        cur = sp.get(rid, {\"sp\": 19.0, \"mode\": \"schedule\"})\n        measured = round(base + random.uniform(-0.3, 0.3), 1)\n        rooms.append({\"id\": rid, \"reachable\": True, \"anticipating\": False, \"open_window\": False,\n                      \"heating_power_request\": 100 if measured < cur[\"sp\"] - 0.2 else 0,\n                      \"therm_measured_temperature\": measured,\n                      \"therm_setpoint_temperature\": cur[\"sp\"], \"therm_setpoint_mode\": cur[\"mode\"],\n                      \"therm_setpoint_start_time\": int(time.time()) - 600,\n                      \"therm_setpoint_end_time\": int(time.time()) + 10800})\n        if valve:\n            modules.append({\"id\": valve, \"type\": \"NRV\", \"reachable\": True, \"bridge\": RELAY,\n                            \"battery_state\": \"high\", \"battery_level\": 2950 - 40 * n,\n                            \"firmware_revision\": 79, \"rf_strength\": 62 + 5 * n})\n    return json.dumps({\"status\": \"ok\", \"time_server\": int(time.time()),\n                       \"body\": {\"home\": {\"id\": HOME, \"rooms\": rooms, \"modules\": modules}}})\n\n\ndef setpoint(state, request):\n    sp = _state(state)\n    req = _state(request)\n    sp[str(req.get(\"room_id\"))] = {\"sp\": float(req.get(\"temp\", 19.0)), \"mode\": \"manual\"}\n    return json.dumps(sp)\n\n\ndef ok(_request=None):\n    return json.dumps({\"status\": \"ok\", \"time_exec\": 0.02, \"time_server\": int(time.time())})"
+ },
+ {
+  "kind": 1,
+  "language": "markdown",
+  "value": "## Actions\n\n### The cloud's answers"
+ },
+ {
+  "kind": 2,
+  "language": "lot",
+  "value": "DEFINE ACTION SimNetatmoHomesData\nON TOPIC \"netatmo/_api/homesdata/request\" DO\n    CALL PYTHON \"NetatmoSim.homesdata\"\n        WITH (PAYLOAD)\n        RETURN AS {answer}\n    PUBLISH TOPIC \"netatmo/_api/homesdata\" WITH {answer}"
+ },
+ {
+  "kind": 2,
+  "language": "lot",
+  "value": "DEFINE ACTION SimNetatmoHomeStatus\nON TOPIC \"netatmo/_api/homestatus/request\" DO\n    CALL PYTHON \"NetatmoSim.homestatus\"\n        WITH (GET TOPIC \"sim/netatmo/setpoints\")\n        RETURN AS {answer}\n    PUBLISH TOPIC \"netatmo/_api/homestatus\" WITH {answer}"
+ },
+ {
+  "kind": 2,
+  "language": "lot",
+  "value": "DEFINE ACTION SimNetatmoSetpoint\nON TOPIC \"netatmo/_api/setroomthermpoint/request\" DO\n    CALL PYTHON \"NetatmoSim.setpoint\"\n        WITH (GET TOPIC \"sim/netatmo/setpoints\", PAYLOAD)\n        RETURN AS {state}\n    KEEP TOPIC \"sim/netatmo/setpoints\" WITH {state}\n    CALL PYTHON \"NetatmoSim.ok\"\n        WITH (PAYLOAD)\n        RETURN AS {answer}\n    PUBLISH TOPIC \"netatmo/_api/setroomthermpoint\" WITH {answer}"
+ },
+ {
+  "kind": 1,
+  "language": "markdown",
+  "value": "### A first poll right away\n\nThe solution polls every 5 minutes. This asks for the home structure and one status at deploy time,\nso the demo shows data at once."
+ },
+ {
+  "kind": 2,
+  "language": "lot",
+  "value": "DEFINE ACTION SimNetatmoKickoff\nON START DO\n    PUBLISH TOPIC \"netatmo/_api/homesdata/request\" WITH \"{}\"\n    PUBLISH TOPIC \"netatmo/_api/homestatus/request\" WITH \"{}\""
+ }
+]

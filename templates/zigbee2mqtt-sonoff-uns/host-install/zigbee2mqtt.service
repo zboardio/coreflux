@@ -1,0 +1,65 @@
+# Zigbee2MQTT as a host service that follows the coordinator. Install as
+# /etc/systemd/system/zigbee2mqtt.service together with 60-zigbee.rules, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now zigbee2mqtt
+#
+# Derived from the upstream unit (zigbee2mqtt.io > Installation > Linux) with four deliberate
+# changes:
+#   1. a dedicated unprivileged account `zigbee2mqtt` (member of dialout) instead of a login user;
+#   2. BindsTo=dev-zigbee.device: the service follows the dongle instead of a boot-time guess;
+#   3. RequiresMountsFor= the data directory: without it Z2M would create an EMPTY data folder and
+#      come up as a brand-new Zigbee network with every device unpaired;
+#   4. sandboxing, because this process holds the Zigbee network key.
+#
+# Build Z2M once by hand before the first start (see the upstream Linux guide: pnpm install +
+# pnpm run build inside /opt/zigbee2mqtt, as the service account). Z2M recompiles itself on start
+# when its stored build hash is stale, and on a small CPU that exceeds the start timeout under
+# Type=notify, which would loop forever. Building needs libsystemd-dev for the sd-notify binding:
+# without it READY=1 never arrives and systemd kills a service that is running fine.
+
+[Unit]
+Description=Zigbee2MQTT
+Documentation=https://www.zigbee2mqtt.io/
+After=network-online.target dev-zigbee.device
+Wants=network-online.target
+BindsTo=dev-zigbee.device
+RequiresMountsFor=/var/lib/zigbee2mqtt
+# Restart forever: an unattended gateway that has given up looks exactly like one that is fine.
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+WatchdogSec=30s
+TimeoutStartSec=600
+Environment=NODE_ENV=production
+# configuration.yaml, secret.yaml, the device database, coordinator_backup.json: back this up.
+Environment=ZIGBEE2MQTT_DATA=/var/lib/zigbee2mqtt
+WorkingDirectory=/opt/zigbee2mqtt
+ExecStart=/usr/bin/node index.js
+User=zigbee2mqtt
+Group=zigbee2mqtt
+SupplementaryGroups=dialout
+Restart=always
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zigbee2mqtt
+
+# Sandbox. PrivateDevices is deliberately NOT set: it would hide /dev/zigbee.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/zigbee2mqtt
+# Z2M compiles itself in place when its build hash is stale, so its tree stays writable.
+ReadWritePaths=/opt/zigbee2mqtt
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+# Z2M idles well under 300 MB; a rebuild on start (tsc) is the memory peak.
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

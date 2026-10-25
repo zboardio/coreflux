@@ -1,0 +1,99 @@
+# Zigbee2MQTT 2.x configuration for the Coreflux UNS template.
+#
+# A STARTING POINT, not the live file. Z2M rewrites configuration.yaml itself: on the first start
+# it replaces the three GENERATE values below with real keys, and from then on the copy in your
+# data folder is a secret (it holds the Zigbee network key) that must be backed up and never
+# committed. Comments do not survive Z2M's rewrites; this annotated copy is the explanation.
+#
+# Every non-default value below is a decision; the comment says why. Three of them are
+# DECIDE BEFORE PAIRING: changing them later re-pairs every device.
+
+version: 5
+
+mqtt:
+  # The Coreflux broker. In the compose quick start it is the service name; for a host install
+  # (../host-install/) on the same machine it is mqtt://127.0.0.1:1883.
+  server: mqtt://coreflux-broker:1883
+  # DECIDE BEFORE PAIRING. Z2M's own default, and deliberately outside the clean UNS: this is the
+  # raw, device-shaped plane. The solution notebook maps it into the UNS.
+  base_topic: zigbee2mqtt
+  # Its own broker account, confined to zigbee2mqtt/# by the solution's Rules. Never root.
+  user: zigbee2mqtt
+  password: '!secret.yaml mqtt_password'
+  # A stable, non-empty client id: a reconnect replaces the old session instead of looking like a
+  # second client, and the broker's session view (ingest/zigbee2mqtt/Session) stays readable.
+  client_id: zigbee2mqtt
+
+serial:
+  # The compose file maps the dongle's by-id path to /dev/zigbee; the host install's udev rule
+  # creates the same name. Never /dev/ttyUSB0 or /dev/ttyACM0: those follow enumeration order.
+  port: /dev/zigbee
+  # Since 2.0 there is no default adapter. Set the one your dongle needs:
+  #   zstack  Sonoff ZBDongle-P (TI CC2652P), Dongle-PP10 (CC2674P10)
+  #   ember   Sonoff ZBDongle-E (EFR32MG21), Dongle Plus MG24, Dongle Max, Dongle Lite MG21
+  #           (`ezsp` is deprecated; never set rtscts: true on these)
+  # Do not tell the P from the E by USB id: the E also ships with the same CP210x bridge
+  # (10c4:ea60) as the P. Read the label, or the by-id name ("..._V2_..." is an E).
+  adapter: zstack
+  baudrate: 115200
+  rtscts: false
+
+frontend:
+  enabled: true
+  port: 8080
+  # No authentication by default. Set auth_token (as a '!secret.yaml ...' reference) before the
+  # frontend is reachable from anywhere but this machine.
+
+device_options:
+  # Z2M's default is retain: false: a device's state then exists on the broker only in the instant
+  # it is published, and a consumer that subscribes later sees nothing until the next report (tens
+  # of minutes for a battery sensor). Retained, the raw plane always holds the last reading.
+  retain: true
+
+availability:
+  # Off by default. Publishes zigbee2mqtt/<device>/availability, which the solution maps to
+  # <position>/DeviceStatus. The timeouts explain an otherwise baffling observation: a battery
+  # sensor with a dead battery reads `online` for a day.
+  enabled: true
+  active:
+    timeout: 10          # minutes, mains-powered devices (they are pinged)
+  passive:
+    timeout: 1500        # minutes = 25 h, battery devices (asleep; pinging would drain them)
+
+ota:
+  # A device can ask Z2M to look for new firmware, and by default Z2M goes to the internet and
+  # does. On an OT gateway that is unplanned outbound traffic and an unplanned firmware update on
+  # a field device. Update deliberately, from the frontend.
+  disable_automatic_update_check: true
+
+advanced:
+  # Z2M's default is true, and true is wrong for a UNS. With it on, every message repeats every
+  # attribute the device ever reported, under ONE last_seen: a battery reading from 09:00 is
+  # re-sent with the 14:00 temperature and looks five hours fresher than it is. Off, a message
+  # carries only what was just measured, and last_seen is true for every value in it. (Home
+  # Assistant's integration needs it on; this template does not use Home Assistant.)
+  cache_state: false
+  # The observation time of every message. The solution uses it as the leaf timestamp; without it
+  # a retained reading from three hours ago is indistinguishable from a live one. Default: disable.
+  last_seen: ISO_8601
+  # One JSON object per device on zigbee2mqtt/<friendly_name> (the shape the solution parses).
+  output: json
+  log_level: info
+  # DECIDE BEFORE PAIRING. 25 sits above WiFi channel 11; Z2M's default 11 overlaps WiFi channel 1.
+  # A few very old devices reject 26, so 25 is the safe high slot. Use 11, 15, 20 or 25.
+  channel: 25
+  # DECIDE BEFORE PAIRING, and not optional. Z2M's defaults for these three are published
+  # constants: omit them and your network is encrypted with a key everyone knows, on the same PAN
+  # id as every other default install in radio range. GENERATE mints real values on first start.
+  network_key: GENERATE
+  pan_id: GENERATE
+  ext_pan_id: GENERATE
+  # Default true: Z2M loads user-supplied JavaScript converters and extensions and runs them
+  # in-process. This template needs none; on a gateway that is code execution for nothing.
+  enable_external_js: false
+
+homeassistant:
+  enabled: false
+
+# permit_join is not a setting since 2.0. Pair from the frontend, or from the broker with the
+# solution's ingest/zigbee2mqtt/permit_join (seconds, at most 254).

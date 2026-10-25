@@ -1,0 +1,22 @@
+# Secrets: only the committed templates (.env.example, *.example) belong in git
+env/
+.env
+.env.*
+!.env.example
+!.env.example.*
+secret.yaml
+
+# Zigbee2MQTT data folder from a template's quick start: holds the network key
+z2m-data/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
