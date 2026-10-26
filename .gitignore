@@ -20,3 +20,6 @@ __pycache__/
 .venv/
 .pytest_cache/
 .mypy_cache/
+
+# Claude Code: local pointers to the private tooling (names it), never published
+CLAUDE.local.md
