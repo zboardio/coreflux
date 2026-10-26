@@ -21,13 +21,15 @@
 #                          whatever opens the port first, so it shows up as an INTERMITTENT failure
 #                          to start or a coordinator that answers garbage, not as a clean error.
 #
-#   TAG+="systemd"         makes systemd publish dev-zigbee.device, which zigbee2mqtt.service binds
-#   SYSTEMD_WANTS          to: unplug stops the service cleanly, replug (any port) starts it again.
-#                          This is what a container's `devices:` mapping cannot do.
+#   TAG+="systemd"         makes systemd publish dev-zigbee.device. zigbee2mqtt.service binds to it
+#                          and is WantedBy= it: the dongle starts and stops the service, replug into
+#                          any port included. This is what a container's `devices:` mapping cannot do.
+#                          No ENV{SYSTEMD_WANTS} here on purpose: `systemctl enable` / `disable` stay
+#                          the one switch.
 #
 # Replace idVendor/idProduct/serial with your dongle's values:
 #   ZBDongle-P (CC2652P)          10c4 / ea60
 #   ZBDongle-E (EFR32MG21)        1a86 / 55d4  (CH9102 bridge) or 10c4 / ea60 (CP210x bridge)
 #   Dongle Plus MG24, Max, Lite   10c4 / ea60
 
-SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="REPLACE_WITH_YOUR_DONGLE_SERIAL", SYMLINK+="zigbee", ENV{ID_MM_DEVICE_IGNORE}="1", TAG+="systemd", ENV{SYSTEMD_WANTS}="zigbee2mqtt.service"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", ATTRS{serial}=="REPLACE_WITH_YOUR_DONGLE_SERIAL", SYMLINK+="zigbee", ENV{ID_MM_DEVICE_IGNORE}="1", TAG+="systemd"

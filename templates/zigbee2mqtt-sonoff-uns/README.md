@@ -165,8 +165,15 @@ is resolved at the same moment.
 - `60-zigbee.rules` gives the dongle a fixed name (`/dev/zigbee`), keyed to its serial number, and
   keeps ModemManager off the port. ModemManager probes new serial devices with AT commands, which
   shows up as an *intermittent* failure to start.
-- `zigbee2mqtt.service` binds to that device. Unplug stops the service cleanly; replugging into any
-  port starts it again.
+- `zigbee2mqtt.service` binds to that device and is `WantedBy=` it, so the dongle starts and stops
+  the service: at boot, and on every replug into any port. Install it with `systemctl reenable` if an
+  earlier copy was `WantedBy=multi-user.target`.
+- `zigbee-replug-wait.conf` goes to `/etc/systemd/system/dev-zigbee.device.d/`. When the dongle is
+  pulled, Z2M exits on its own (code 2) and `Restart=always` queues a restart that waits for the
+  device. systemd gives a device 90 s; after that the restart fails as `Dependency failed`, nothing
+  retries it, and the replug starts nothing. The drop-in lifts that timeout, so a replug after any
+  length of time brings Z2M back without a hand on the gateway. Nothing at boot waits for it,
+  because the unit is not under `multi-user.target`.
 
 In `configuration.yaml`, set `mqtt.server` to `mqtt://127.0.0.1:1883` for a broker on the same host.
 

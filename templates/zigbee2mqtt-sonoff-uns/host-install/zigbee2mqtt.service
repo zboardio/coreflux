@@ -1,11 +1,15 @@
 # Zigbee2MQTT as a host service that follows the coordinator. Install as
-# /etc/systemd/system/zigbee2mqtt.service together with 60-zigbee.rules, then
+# /etc/systemd/system/zigbee2mqtt.service together with 60-zigbee.rules and
+# zigbee-replug-wait.conf (as /etc/systemd/system/dev-zigbee.device.d/zigbee-replug-wait.conf), then
 #   sudo systemctl daemon-reload && sudo systemctl enable --now zigbee2mqtt
+# An earlier copy of this unit was WantedBy=multi-user.target: use `systemctl reenable` instead of
+# `enable`, so that old link is removed.
 #
 # Derived from the upstream unit (zigbee2mqtt.io > Installation > Linux) with four deliberate
 # changes:
 #   1. a dedicated unprivileged account `zigbee2mqtt` (member of dialout) instead of a login user;
-#   2. BindsTo=dev-zigbee.device: the service follows the dongle instead of a boot-time guess;
+#   2. BindsTo= and WantedBy=dev-zigbee.device: the dongle starts and stops the service, at boot
+#      and on every replug, instead of a boot-time guess (see [Install] and zigbee-replug-wait.conf);
 #   3. RequiresMountsFor= the data directory: without it Z2M would create an EMPTY data folder and
 #      come up as a brand-new Zigbee network with every device unpaired;
 #   4. sandboxing, because this process holds the Zigbee network key.
@@ -24,6 +28,11 @@ Wants=network-online.target
 BindsTo=dev-zigbee.device
 RequiresMountsFor=/var/lib/zigbee2mqtt
 # Restart forever: an unattended gateway that has given up looks exactly like one that is fine.
+# An unplug, as it really happens: Z2M sees the port close and exits with code 2 ("Adapter
+# disconnected") before systemd notices the device is gone. Restart=always then queues a restart that
+# waits for dev-zigbee.device. With systemd's default 90 s device timeout that restart fails as
+# "Dependency failed", Restart= does not retry a dependency failure, and the later replug starts
+# nothing. zigbee-replug-wait.conf lifts that timeout: the restart completes when the dongle is back.
 StartLimitIntervalSec=0
 
 [Service]
@@ -61,5 +70,9 @@ LockPersonality=yes
 # Z2M idles well under 300 MB; a rebuild on start (tsc) is the memory peak.
 MemoryMax=1G
 
+# Started BY THE DONGLE: `systemctl enable` links the unit into dev-zigbee.device.wants/, so the
+# coordinator appearing starts it, at boot and on every replug. Not multi-user.target: with the
+# device wait unlimited, a boot without the dongle would never reach a target that wants this unit.
+# It is also the only thing that starts it, so `systemctl disable` really keeps it off.
 [Install]
-WantedBy=multi-user.target
+WantedBy=dev-zigbee.device
