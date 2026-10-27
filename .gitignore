@@ -21,6 +21,5 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
-# Claude Code: local pointers to the private tooling (names it), never published
+# Claude Code: a maintainer's local instructions, never published
 CLAUDE.local.md
-CLAUDE.md
