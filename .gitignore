@@ -23,3 +23,6 @@ __pycache__/
 
 # Claude Code: a maintainer's local instructions, never published
 CLAUDE.local.md
+
+# Internal plans and agent briefs for this repo: working material, never published
+docs/plan-internal/
