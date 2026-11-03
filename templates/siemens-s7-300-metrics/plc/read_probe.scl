@@ -1,0 +1,171 @@
+// Read probe for an S7-300: the first thing downloaded, before the metrics blocks. It answers what a
+// whole-DB read through Coreflux delivers, over each hardware path. Remove it when the test is done.
+// Procedure: ../TIA-PROJECT.md
+//
+// It only touches DB_ReadProbe. It calls no OB and stops nothing. The Echo bytes and Spare are the only
+// things written from outside.
+
+TYPE "typProbeStripe"
+VERSION : 0.1
+   STRUCT
+      Scan : DInt;                    // +0   rewritten every cycle
+      Index : Int;                    // +4   stripe number
+      PatInt : Int;                   // +6   -(Index + 1): sign
+      PatDWord : DWord;               // +8   DW#16#01020304: byte order
+      PatReal : Real;                 // +12  1234.5 + Index: float decoding
+      Fill : Array[0..111] of Byte;   // +16  absolute DB offset mod 251: a dropped or shifted byte
+   END_STRUCT;
+END_TYPE
+
+DATA_BLOCK "DB_ReadProbe"
+VERSION : 0.1
+   STRUCT
+      // Header, 0..39
+      Magic : DWord := DW#16#50524F42;   // 0  "PROB"
+      LayoutVersion : Int := 1;          // 4
+      StripeCount : Int := 64;           // 6
+      StripeSize : Int := 128;           // 8
+      BlockSize : Int := 8232;           // 10 what a whole read asks for: header + stripes
+      Scan : DInt;                       // 12 cycle counter
+      CycMin_ms : Int;                   // 16 last completed second
+      CycMax_ms : Int;                   // 18 last completed second
+      Cycles : Int;                      // 20 cycles in the last completed second
+      Reserved22 : Int;                  // 22
+      LifeMPI : Byte := B#16#01;         // 24 PLC writes; moves on when EchoMPI confirms it
+      EchoMPI : Byte;                    // 25 WRITTEN BY THE MPI ROUTE
+      LifePN : Byte := B#16#01;          // 26 PLC writes; moves on when EchoPN confirms it
+      EchoPN : Byte;                     // 27 WRITTEN BY THE PN ROUTE
+      BadEchoMPI : Int;                  // 28 echoes that were neither current nor the previous value
+      BadEchoPN : Int;                   // 30
+      AgeMPI_s : Int;                    // 32 seconds since the last confirmation
+      AgePN_s : Int;                     // 34
+      InitDone : Bool;                   // 36.0 the stripes are filled; do not trust a read before this
+      StripesOff : Bool;                 // 36.1 set in a watch table to measure what the stripes cost
+      InitNext : Int;                    // 38 next stripe to fill. Set to 0 to fill again
+      // Stripes, 40..8231
+      Stripe : Array[0..63] of "typProbeStripe";
+      // Work area, 8232..8271, not part of a read
+      WinStart : DInt;                   // 8232
+      WinMin : Int;                      // 8236
+      WinMax : Int;                      // 8238
+      WinCycles : Int;                   // 8240
+      PrevEchoMPI : Byte;                // 8242
+      PrevEchoPN : Byte;                 // 8243
+      Spare : Array[0..27] of Byte;      // 8244 free; a write test may use it
+   END_STRUCT;
+BEGIN
+END_DATA_BLOCK
+
+FUNCTION "FC_ReadProbe" : Void
+VERSION : 0.1
+   VAR_INPUT
+      PrevCycle_ms : Int;   // wire #OB1_PREV_CYCLE
+   END_VAR
+   VAR_TEMP
+      i : Int;
+      j : Int;
+      base : Int;
+      life : Int;
+      echo : Int;
+      prev : Int;
+      nowMs : DInt;
+      elapsed : DInt;
+   END_VAR
+BEGIN
+   // One stripe per cycle: filling all 64 at once could reach the cycle-time watchdog on a slow CPU.
+   IF "DB_ReadProbe".InitNext < 64 THEN
+      #i := "DB_ReadProbe".InitNext;
+      #base := 40 + 128 * #i;
+      "DB_ReadProbe".Stripe[#i].Index := #i;
+      "DB_ReadProbe".Stripe[#i].PatInt := -(#i + 1);
+      "DB_ReadProbe".Stripe[#i].PatDWord := DW#16#01020304;
+      "DB_ReadProbe".Stripe[#i].PatReal := 1234.5 + INT_TO_REAL(#i);
+      FOR #j := 0 TO 111 DO
+         "DB_ReadProbe".Stripe[#i].Fill[#j] := WORD_TO_BYTE(INT_TO_WORD((#base + 16 + #j) MOD 251));
+      END_FOR;
+      "DB_ReadProbe".InitNext := #i + 1;
+      "DB_ReadProbe".InitDone := "DB_ReadProbe".InitNext >= 64;
+   END_IF;
+
+   // The same value in the header and every stripe: one read seeing several values was not atomic.
+   IF "DB_ReadProbe".Scan >= 2147483647 THEN
+      "DB_ReadProbe".Scan := 0;
+   END_IF;
+   "DB_ReadProbe".Scan := "DB_ReadProbe".Scan + 1;
+   IF NOT "DB_ReadProbe".StripesOff THEN
+      FOR #i := 0 TO 63 DO
+         "DB_ReadProbe".Stripe[#i].Scan := "DB_ReadProbe".Scan;
+      END_FOR;
+   END_IF;
+
+   // Cycle time, one window per second.
+   IF "DB_ReadProbe".WinCycles = 0 THEN
+      "DB_ReadProbe".WinMin := #PrevCycle_ms;
+      "DB_ReadProbe".WinMax := #PrevCycle_ms;
+   ELSE
+      IF #PrevCycle_ms < "DB_ReadProbe".WinMin THEN
+         "DB_ReadProbe".WinMin := #PrevCycle_ms;
+      END_IF;
+      IF #PrevCycle_ms > "DB_ReadProbe".WinMax THEN
+         "DB_ReadProbe".WinMax := #PrevCycle_ms;
+      END_IF;
+   END_IF;
+   IF "DB_ReadProbe".WinCycles < 32767 THEN
+      "DB_ReadProbe".WinCycles := "DB_ReadProbe".WinCycles + 1;
+   END_IF;
+
+   // Health loop, MPI. Moves on only when the echo confirms the current value. 0 is never used, so a
+   // zeroed byte confirms nothing. A new value that is neither current nor previous is counted once.
+   #life := WORD_TO_INT(BYTE_TO_WORD("DB_ReadProbe".LifeMPI));
+   #echo := WORD_TO_INT(BYTE_TO_WORD("DB_ReadProbe".EchoMPI));
+   #prev := WORD_TO_INT(BYTE_TO_WORD("DB_ReadProbe".PrevEchoMPI));
+   IF #echo = #life THEN
+      IF #life >= 255 THEN
+         #life := 1;
+      ELSE
+         #life := #life + 1;
+      END_IF;
+      "DB_ReadProbe".LifeMPI := WORD_TO_BYTE(INT_TO_WORD(#life));
+      "DB_ReadProbe".AgeMPI_s := 0;
+   ELSIF #echo <> #prev AND #echo <> 0 THEN
+      "DB_ReadProbe".BadEchoMPI := "DB_ReadProbe".BadEchoMPI + 1;
+   END_IF;
+   "DB_ReadProbe".PrevEchoMPI := "DB_ReadProbe".EchoMPI;
+
+   // Health loop, PN: the same.
+   #life := WORD_TO_INT(BYTE_TO_WORD("DB_ReadProbe".LifePN));
+   #echo := WORD_TO_INT(BYTE_TO_WORD("DB_ReadProbe".EchoPN));
+   #prev := WORD_TO_INT(BYTE_TO_WORD("DB_ReadProbe".PrevEchoPN));
+   IF #echo = #life THEN
+      IF #life >= 255 THEN
+         #life := 1;
+      ELSE
+         #life := #life + 1;
+      END_IF;
+      "DB_ReadProbe".LifePN := WORD_TO_BYTE(INT_TO_WORD(#life));
+      "DB_ReadProbe".AgePN_s := 0;
+   ELSIF #echo <> #prev AND #echo <> 0 THEN
+      "DB_ReadProbe".BadEchoPN := "DB_ReadProbe".BadEchoPN + 1;
+   END_IF;
+   "DB_ReadProbe".PrevEchoPN := "DB_ReadProbe".EchoPN;
+
+   // Close the second. TIME_TCK wraps from 2^31-1 to 0.
+   #nowMs := TIME_TO_DINT(TIME_TCK());
+   #elapsed := #nowMs - "DB_ReadProbe".WinStart;
+   IF #elapsed < 0 THEN
+      #elapsed := #elapsed + 2147483647;
+   END_IF;
+   IF #elapsed >= 1000 THEN
+      "DB_ReadProbe".CycMin_ms := "DB_ReadProbe".WinMin;
+      "DB_ReadProbe".CycMax_ms := "DB_ReadProbe".WinMax;
+      "DB_ReadProbe".Cycles := "DB_ReadProbe".WinCycles;
+      "DB_ReadProbe".WinCycles := 0;
+      "DB_ReadProbe".WinStart := #nowMs;
+      IF "DB_ReadProbe".AgeMPI_s < 32767 THEN
+         "DB_ReadProbe".AgeMPI_s := "DB_ReadProbe".AgeMPI_s + 1;
+      END_IF;
+      IF "DB_ReadProbe".AgePN_s < 32767 THEN
+         "DB_ReadProbe".AgePN_s := "DB_ReadProbe".AgePN_s + 1;
+      END_IF;
+   END_IF;
+END_FUNCTION
