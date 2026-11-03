@@ -1,9 +1,6 @@
-// Read probe for an S7-300: the first thing downloaded, before the metrics blocks. It answers what a
-// whole-DB read through Coreflux delivers, over each hardware path. Remove it when the test is done.
-// Procedure: ../TIA-PROJECT.md
-//
-// It only touches DB_ReadProbe. It calls no OB and stops nothing. The Echo bytes and Spare are the only
-// things written from outside.
+// Read test for an S7-300: what a whole-DB read delivers over a hardware path, and what it costs. Optional, and removed
+// afterwards. It only touches DB_ReadProbe. The Echo bytes and Spare are the only things written from outside.
+// Build guide: ../TIA-PROJECT.md
 
 TYPE "typProbeStripe"
 VERSION : 0.1

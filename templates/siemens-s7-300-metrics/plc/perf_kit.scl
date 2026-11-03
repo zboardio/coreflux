@@ -1,0 +1,517 @@
+// Cycle-time metrics and diagnostics for an S7-300. Build guide: ../TIA-PROJECT.md
+//
+// OB1 calls "FC_PerfMon", which also runs the health loop and the diagnostics. OB100 calls "FC_PerfBoot". OB80, OB82
+// and OB86 call "FC_PerfFault". It writes only to the DBs in this file, and the only thing written from outside is each
+// path's Echo byte in "DB_PerfHealth".
+//
+// A reader decodes by offset, big-endian, so a layout change raises that DB's LayoutVersion. DB_PerfMon's read part is
+// 72 + 68 x RingSize bytes: changing the ring means changing the array bound, RingSize and the limit in "FC_PerfMon".
+
+TYPE "typPerfRecord"
+VERSION : 0.1
+   STRUCT
+      Seq : DInt;                     // +0  1, 2, 3... since the boot. Always lands in slot (Seq - 1) mod RingSize
+      StampDate : DInt;               // +4  YYYYMMDD at window close
+      StampTime : DInt;               // +8  HHMMSSmmm at window close
+      Cycles : DInt;                  // +12
+      CycMin_ms : Real;               // +16
+      CycMax_ms : Real;               // +20
+      CycAvg_ms : Real;               // +24
+      CommLoad_pct : Real;            // +28 -1 = not available, always on an S7-300
+      Hist : Array[0..7] of DInt;     // +32 cycles per bucket
+      Flags : Word;                   // +64 bit 0 first window after boot, bit 1 OB80 in this window
+      OB80Cnt : Int;                  // +66
+   END_STRUCT;
+END_TYPE
+
+TYPE "typPerfHealthSlot"
+VERSION : 0.1
+   STRUCT
+      Life : Byte := B#16#01;         // +0  PLC: 1..255, then 1 again. Never 0, so a zeroed byte confirms nothing
+      Echo : Byte;                    // +1  WRITTEN BY THAT PATH'S READER
+      BadEcho : Int;                  // +2  values that were neither the current one nor the previous one
+      Age_s : Int;                    // +4  seconds since the last confirmation
+      Losses : Int;                   // +6  times Age_s passed LossLimit_s after a confirmation
+      LastLossDate : DInt;            // +8  YYYYMMDD
+      LastLossTime : DInt;            // +12 HHMMSSmmm
+      Healthy : Bool;                 // +16.0 information only. It stops nothing
+      Seen : Bool;                    // +16.1 confirmed at least once since the boot: a path not using the loop counts no loss
+      PrevEcho : Byte;                // +17
+   END_STRUCT;
+END_TYPE
+
+DATA_BLOCK "DB_PerfMon"
+VERSION : 0.1
+   STRUCT
+      LayoutVersion : Int := 2;       // 0
+      RecordSize : Int := 68;         // 2
+      RingSize : Int := 120;          // 4
+      WriteIdx : Int := -1;           // 6  last COMPLETED slot, -1 = none
+      Seq : DInt;                     // 8  Seq of the last completed record
+      WindowMs : Int := 1000;         // 12
+      RestartCount : Int;             // 14
+      Edges_ms : Array[0..6] of Real; // 16 upper edges of the buckets, ascending. Set once per PLC, before comparing anything
+      LifeMinCycle_ms : Real;         // 44 since boot
+      LifeMaxCycle_ms : Real;         // 48
+      OB80Total : DInt;               // 52
+      OB86Events : DInt;              // 56
+      OB82Events : DInt;              // 60
+      BootDate : DInt;                // 64 YYYYMMDD, set by OB100
+      BootTime : DInt;                // 68 HHMMSSmmm
+      Ring : Array[0..119] of "typPerfRecord";   // 72
+      // Work area, 8232.., not part of a read
+      IsStarted : Bool;               // 8232.0
+      FirstWindow : Bool;             // 8232.1
+      WindowStartMs : DInt;           // 8234
+      SecondStartMs : DInt;           // 8238
+      WindowCycles : DInt;            // 8242
+      WindowSumMs : DInt;             // 8246
+      WindowMinMs : Int;              // 8250
+      WindowMaxMs : Int;              // 8252
+      WindowHist : Array[0..7] of DInt;   // 8254
+      LastOB80Total : DInt;           // 8286
+      KnownBootDate : DInt;           // 8290
+      KnownBootTime : DInt;           // 8294
+   END_STRUCT;
+BEGIN
+   Edges_ms[0] := 2.0;
+   Edges_ms[1] := 5.0;
+   Edges_ms[2] := 10.0;
+   Edges_ms[3] := 20.0;
+   Edges_ms[4] := 40.0;
+   Edges_ms[5] := 60.0;
+   Edges_ms[6] := 100.0;
+END_DATA_BLOCK
+
+DATA_BLOCK "DB_PerfDiag"
+VERSION : 0.1
+   STRUCT
+      LayoutVersion : Int := 1;       // 0
+      BlockSize : Int := 644;         // 2  what a whole read asks for; the work area follows
+      DiagSeq : DInt;                 // 4  raised on a new fault or a new diagnostic-buffer entry
+      // Last fault, recorded by the OB before it stops the CPU
+      FaultOB : Int;                  // 8
+      FaultCount : Int;               // 10
+      FaultDate : DInt;               // 12
+      FaultTime : DInt;               // 16
+      FaultEvClass : Byte;            // 20 the OB's EV_CLASS
+      FaultFltId : Byte;              // 21 the OB's FLT_ID
+      Spare22 : Int;                  // 22
+      // The previous boot, copied by OB100 before it zeroes anything
+      PrevBootDate : DInt;            // 24
+      PrevBootTime : DInt;            // 28
+      PrevLastSeq : DInt;             // 32
+      PrevOB80 : DInt;                // 36
+      PrevOB86 : DInt;                // 40
+      PrevOB82 : DInt;                // 44
+      // RDSYSST's RET_VAL per step (see "FC_PerfDiag"): which SZL this CPU answers
+      Ret : Array[0..7] of Int;       // 48
+      LedCount : Int;                 // 64 records in Led
+      ModCount : Int;                 // 66 records in ModState
+      DiagCount : Int;                // 68 entries in DiagBuffer
+      RetDiagBuffer : Int;            // 70 RET_VAL of step 8, the diagnostic buffer
+      // SZL records, stored as the CPU returns them
+      IdOrder : Array[0..27] of Byte;      // 72  SZL 16#0111 index 1: order number
+      IdFirmware : Array[0..27] of Byte;   // 100 SZL 16#0111 index 7: firmware
+      IdSerial : Array[0..33] of Byte;     // 128 SZL 16#011C index 5: serial number
+      IdStation : Array[0..33] of Byte;    // 162 SZL 16#011C index 1: station name
+      Led : Array[0..39] of Byte;          // 196 SZL 16#0074 index 0: 4 bytes per LED
+      ModState : Array[0..127] of Byte;    // 236 SZL 16#0D91 index 0: 16 bytes per module, rack 0
+      Protection : Array[0..39] of Byte;   // 364 SZL 16#0132 index 4
+      Connections : Array[0..39] of Byte;  // 404 SZL 16#0132 index 1
+      DiagBuffer : Array[0..199] of Byte;  // 444 SZL 16#00A0: 20 bytes per entry, newest first
+      // Work area, 644.., not part of a read
+      Step : Int;                     // 644 next SZL step. OB100 sets it back to 0, so identity is read again
+      Wait_s : Int;                   // 646 seconds until the next step
+      StepEvery_s : Int := 2;         // 648 seconds between steps: SFC51 costs cycle time. Raise it if the cost shows
+      PrevTop : Array[0..19] of Byte; // 650 the newest diagnostic entry, to see a new one
+   END_STRUCT;
+BEGIN
+END_DATA_BLOCK
+
+DATA_BLOCK "DB_PerfHealth"
+VERSION : 0.1
+   STRUCT
+      LayoutVersion : Int := 1;       // 0
+      BlockSize : Int := 44;          // 2
+      LossLimit_s : Int := 5;         // 4
+      Spare6 : Int;                   // 6
+      MPI : "typPerfHealthSlot";      // 8
+      PN : "typPerfHealthSlot";       // 26
+   END_STRUCT;
+BEGIN
+END_DATA_BLOCK
+
+FUNCTION "FC_PerfStamp" : Void
+VERSION : 0.1
+   VAR_OUTPUT
+      StampDate : DInt;   // YYYYMMDD
+      StampTime : DInt;   // HHMMSSmmm
+   END_VAR
+   VAR_TEMP
+      tsClock : Date_And_Time;
+      tsBytes AT tsClock : Array[0..7] of Byte;
+      retVal : Int;
+      byteNo : Int;
+      bcdWord : Word;
+      clockPart : Array[0..6] of Int;
+      fullYear : DInt;
+   END_VAR
+BEGIN
+   #retVal := RD_SYS_T(OUT => #tsClock);
+   // BCD: 0 year, 1 month, 2 day, 3 hour, 4 minute, 5 second, 6 ms hundreds and tens, 7 ms units in the high nibble
+   FOR #byteNo := 0 TO 6 DO
+      #bcdWord := BYTE_TO_WORD(#tsBytes[#byteNo]);
+      #clockPart[#byteNo] := WORD_TO_INT(SHR(IN := #bcdWord, N := 4)) * 10 + WORD_TO_INT(#bcdWord AND W#16#000F);
+   END_FOR;
+   #bcdWord := BYTE_TO_WORD(#tsBytes[7]);
+   IF #clockPart[0] >= 90 THEN
+      #fullYear := 1900 + INT_TO_DINT(#clockPart[0]);
+   ELSE
+      #fullYear := 2000 + INT_TO_DINT(#clockPart[0]);
+   END_IF;
+   #StampDate := #fullYear * 10000 + INT_TO_DINT(#clockPart[1]) * 100 + INT_TO_DINT(#clockPart[2]);
+   #StampTime := INT_TO_DINT(#clockPart[3]) * 10000000 + INT_TO_DINT(#clockPart[4]) * 100000 + INT_TO_DINT(#clockPart[5]) * 1000
+      + INT_TO_DINT(#clockPart[6]) * 10 + INT_TO_DINT(WORD_TO_INT(SHR(IN := #bcdWord, N := 4)));
+END_FUNCTION
+
+FUNCTION "FC_PerfBoot" : Void
+VERSION : 0.1
+   VAR_TEMP
+      tsDate : DInt;
+      tsTime : DInt;
+   END_VAR
+BEGIN
+   // OB100. The order is the point: nothing is zeroed before it is kept.
+   "DB_PerfDiag".PrevBootDate := "DB_PerfMon".BootDate;
+   "DB_PerfDiag".PrevBootTime := "DB_PerfMon".BootTime;
+   "DB_PerfDiag".PrevLastSeq := "DB_PerfMon".Seq;
+   "DB_PerfDiag".PrevOB80 := "DB_PerfMon".OB80Total;
+   "DB_PerfDiag".PrevOB86 := "DB_PerfMon".OB86Events;
+   "DB_PerfDiag".PrevOB82 := "DB_PerfMon".OB82Events;
+
+   "FC_PerfStamp"(StampDate => #tsDate, StampTime => #tsTime);
+   "DB_PerfMon".BootDate := #tsDate;
+   "DB_PerfMon".BootTime := #tsTime;
+   IF "DB_PerfMon".RestartCount < 32767 THEN
+      "DB_PerfMon".RestartCount := "DB_PerfMon".RestartCount + 1;
+   END_IF;
+   "DB_PerfMon".Seq := 0;
+   "DB_PerfMon".WriteIdx := -1;
+   "DB_PerfMon".OB80Total := 0;
+   "DB_PerfMon".OB86Events := 0;
+   "DB_PerfMon".OB82Events := 0;
+   "DB_PerfMon".LifeMinCycle_ms := 0.0;
+   "DB_PerfMon".LifeMaxCycle_ms := 0.0;
+
+   "DB_PerfDiag".Step := 0;
+   "DB_PerfDiag".Wait_s := 0;
+   "DB_PerfHealth".MPI.Seen := FALSE;
+   "DB_PerfHealth".MPI.Healthy := FALSE;
+   "DB_PerfHealth".MPI.Age_s := 0;
+   "DB_PerfHealth".PN.Seen := FALSE;
+   "DB_PerfHealth".PN.Healthy := FALSE;
+   "DB_PerfHealth".PN.Age_s := 0;
+END_FUNCTION
+
+FUNCTION "FC_PerfFault" : Void
+VERSION : 0.1
+   VAR_INPUT
+      OB_Nr : Int;
+      EvClass : Byte;
+      FltId : Byte;
+   END_VAR
+   VAR_TEMP
+      tsDate : DInt;
+      tsTime : DInt;
+   END_VAR
+BEGIN
+   // OB80, OB82, OB86: count and record. The OB decides what happens next, so its reaction stays visible there.
+   CASE #OB_Nr OF
+      80:
+         "DB_PerfMon".OB80Total := "DB_PerfMon".OB80Total + 1;
+      82:
+         "DB_PerfMon".OB82Events := "DB_PerfMon".OB82Events + 1;
+      86:
+         "DB_PerfMon".OB86Events := "DB_PerfMon".OB86Events + 1;
+   END_CASE;
+   "FC_PerfStamp"(StampDate => #tsDate, StampTime => #tsTime);
+   "DB_PerfDiag".FaultOB := #OB_Nr;
+   "DB_PerfDiag".FaultDate := #tsDate;
+   "DB_PerfDiag".FaultTime := #tsTime;
+   "DB_PerfDiag".FaultEvClass := #EvClass;
+   "DB_PerfDiag".FaultFltId := #FltId;
+   IF "DB_PerfDiag".FaultCount < 32767 THEN
+      "DB_PerfDiag".FaultCount := "DB_PerfDiag".FaultCount + 1;
+   END_IF;
+   "DB_PerfDiag".DiagSeq := "DB_PerfDiag".DiagSeq + 1;
+END_FUNCTION
+
+FUNCTION "FC_PerfHealth" : Void
+VERSION : 0.1
+   VAR_INPUT
+      Tick1s : Bool;
+      LossLimit_s : Int;
+   END_VAR
+   VAR_IN_OUT
+      Slot : "typPerfHealthSlot";
+   END_VAR
+   VAR_TEMP
+      lifeValue : Int;
+      echoValue : Int;
+      prevEchoValue : Int;
+      tsDate : DInt;
+      tsTime : DInt;
+   END_VAR
+BEGIN
+   // One path's loop. It moves on only when Echo confirms Life, so the counter's speed is the speed of the circle.
+   #lifeValue := WORD_TO_INT(BYTE_TO_WORD(#Slot.Life));
+   #echoValue := WORD_TO_INT(BYTE_TO_WORD(#Slot.Echo));
+   #prevEchoValue := WORD_TO_INT(BYTE_TO_WORD(#Slot.PrevEcho));
+   IF #lifeValue = 0 THEN
+      #Slot.Life := B#16#01;
+   ELSIF #echoValue = #lifeValue THEN
+      IF #lifeValue >= 255 THEN
+         #lifeValue := 1;
+      ELSE
+         #lifeValue := #lifeValue + 1;
+      END_IF;
+      #Slot.Life := WORD_TO_BYTE(INT_TO_WORD(#lifeValue));
+      #Slot.Age_s := 0;
+      #Slot.Seen := TRUE;
+      #Slot.Healthy := TRUE;
+   ELSIF #echoValue <> #prevEchoValue AND #echoValue <> 0 THEN
+      #Slot.BadEcho := #Slot.BadEcho + 1;
+   END_IF;
+   #Slot.PrevEcho := #Slot.Echo;
+
+   IF #Tick1s THEN
+      IF #Slot.Age_s < 32767 THEN
+         #Slot.Age_s := #Slot.Age_s + 1;
+      END_IF;
+      IF #Slot.Healthy AND #Slot.Age_s > #LossLimit_s THEN
+         #Slot.Healthy := FALSE;
+         #Slot.Losses := #Slot.Losses + 1;
+         "FC_PerfStamp"(StampDate => #tsDate, StampTime => #tsTime);
+         #Slot.LastLossDate := #tsDate;
+         #Slot.LastLossTime := #tsTime;
+      END_IF;
+   END_IF;
+END_FUNCTION
+
+FUNCTION "FC_PerfDiag" : Void
+VERSION : 0.1
+   VAR_INPUT
+      Tick1s : Bool;
+   END_VAR
+   VAR_TEMP
+      stepNo : Int;
+      retVal : Int;
+      isBusy : Bool;
+      szlHeader : Struct
+         LENTHDR : Word;
+         N_DR : Word;
+      END_STRUCT;
+      byteNo : Int;
+      newEntry : Bool;
+   END_VAR
+BEGIN
+   // One SFC51 request at a time, spread over seconds, so it never holds OB1 up for long. Steps 0..3 identity,
+   // once per boot. Steps 4..8 repeat. An SZL this CPU does not answer leaves its RET_VAL in Ret and the state
+   // machine moves on. A reply too long for its array keeps what fits, which is what is wanted here.
+   #stepNo := "DB_PerfDiag".Step;
+   IF #stepNo < 0 OR #stepNo > 8 THEN
+      #stepNo := 4;
+   END_IF;
+   IF #Tick1s AND "DB_PerfDiag".Wait_s > 0 THEN
+      "DB_PerfDiag".Wait_s := "DB_PerfDiag".Wait_s - 1;
+   END_IF;
+   IF "DB_PerfDiag".Wait_s > 0 THEN
+      RETURN;
+   END_IF;
+
+   #isBusy := FALSE;
+   #szlHeader.N_DR := W#16#0000;
+   CASE #stepNo OF
+      0:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#0111, INDEX := W#16#0001, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".IdOrder);
+      1:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#0111, INDEX := W#16#0007, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".IdFirmware);
+      2:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#011C, INDEX := W#16#0005, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".IdSerial);
+      3:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#011C, INDEX := W#16#0001, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".IdStation);
+      4:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#0074, INDEX := W#16#0000, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".Led);
+      5:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#0D91, INDEX := W#16#0000, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".ModState);
+      6:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#0132, INDEX := W#16#0004, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".Protection);
+      7:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#0132, INDEX := W#16#0001, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".Connections);
+      8:
+         #retVal := RDSYSST(REQ := TRUE, SZL_ID := W#16#00A0, INDEX := W#16#0000, BUSY => #isBusy, SZL_HEADER => #szlHeader, DR := "DB_PerfDiag".DiagBuffer);
+   END_CASE;
+   IF #isBusy THEN
+      RETURN;   // the same request again next cycle
+   END_IF;
+
+   IF #stepNo <= 7 THEN
+      "DB_PerfDiag".Ret[#stepNo] := #retVal;
+   ELSE
+      "DB_PerfDiag".RetDiagBuffer := #retVal;
+   END_IF;
+   CASE #stepNo OF
+      4:
+         "DB_PerfDiag".LedCount := WORD_TO_INT(#szlHeader.N_DR);
+      5:
+         "DB_PerfDiag".ModCount := WORD_TO_INT(#szlHeader.N_DR);
+      8:
+         "DB_PerfDiag".DiagCount := WORD_TO_INT(#szlHeader.N_DR);
+         #newEntry := FALSE;
+         FOR #byteNo := 0 TO 19 DO
+            IF "DB_PerfDiag".DiagBuffer[#byteNo] <> "DB_PerfDiag".PrevTop[#byteNo] THEN
+               #newEntry := TRUE;
+            END_IF;
+            "DB_PerfDiag".PrevTop[#byteNo] := "DB_PerfDiag".DiagBuffer[#byteNo];
+         END_FOR;
+         IF #newEntry THEN
+            "DB_PerfDiag".DiagSeq := "DB_PerfDiag".DiagSeq + 1;
+         END_IF;
+   END_CASE;
+
+   IF #stepNo >= 8 THEN
+      "DB_PerfDiag".Step := 4;
+   ELSE
+      "DB_PerfDiag".Step := #stepNo + 1;
+   END_IF;
+   "DB_PerfDiag".Wait_s := "DB_PerfDiag".StepEvery_s;
+END_FUNCTION
+
+FUNCTION "FC_PerfMon" : Void
+VERSION : 0.1
+   VAR_INPUT
+      PrevCycle_ms : Int;   // wire #OB1_PREV_CYCLE
+   END_VAR
+   VAR_TEMP
+      itemNo : Int;
+      bucketNo : Int;
+      slotNo : Int;
+      nextSeq : DInt;
+      ob80InWindow : DInt;
+      recordFlags : Word;
+      tsDate : DInt;
+      tsTime : DInt;
+      tickNowMs : DInt;
+      elapsedMs : DInt;
+      isNewSecond : Bool;
+      doReset : Bool;
+      cycle_ms : Real;
+   END_VAR
+BEGIN
+   // The one call in OB1, its first network. Closes a record each WindowMs, and runs the health loop and the diagnostics.
+   #doReset := FALSE;
+   #tickNowMs := TIME_TO_DINT(TIME_TCK());
+
+   // S7-300 instance DBs usually survive a restart, so the boot id tells a new boot. Its first cycle is not counted.
+   IF NOT "DB_PerfMon".IsStarted OR "DB_PerfMon".BootDate <> "DB_PerfMon".KnownBootDate OR "DB_PerfMon".BootTime <> "DB_PerfMon".KnownBootTime THEN
+      "DB_PerfMon".IsStarted := TRUE;
+      "DB_PerfMon".KnownBootDate := "DB_PerfMon".BootDate;
+      "DB_PerfMon".KnownBootTime := "DB_PerfMon".BootTime;
+      "DB_PerfMon".LastOB80Total := "DB_PerfMon".OB80Total;
+      "DB_PerfMon".FirstWindow := TRUE;
+      "DB_PerfMon".WindowStartMs := #tickNowMs;
+      "DB_PerfMon".SecondStartMs := #tickNowMs;
+      #doReset := TRUE;
+   ELSE
+      #cycle_ms := INT_TO_REAL(#PrevCycle_ms);
+      "DB_PerfMon".WindowCycles := "DB_PerfMon".WindowCycles + 1;
+      "DB_PerfMon".WindowSumMs := "DB_PerfMon".WindowSumMs + INT_TO_DINT(#PrevCycle_ms);
+      IF #PrevCycle_ms < "DB_PerfMon".WindowMinMs THEN
+         "DB_PerfMon".WindowMinMs := #PrevCycle_ms;
+      END_IF;
+      IF #PrevCycle_ms > "DB_PerfMon".WindowMaxMs THEN
+         "DB_PerfMon".WindowMaxMs := #PrevCycle_ms;
+      END_IF;
+      #bucketNo := 7;
+      FOR #itemNo := 6 TO 0 BY -1 DO
+         IF #cycle_ms < "DB_PerfMon".Edges_ms[#itemNo] THEN
+            #bucketNo := #itemNo;
+         END_IF;
+      END_FOR;
+      "DB_PerfMon".WindowHist[#bucketNo] := "DB_PerfMon".WindowHist[#bucketNo] + 1;
+
+      // TIME_TCK wraps from 2^31-1 to 0
+      #elapsedMs := #tickNowMs - "DB_PerfMon".WindowStartMs;
+      IF #elapsedMs < 0 THEN
+         #elapsedMs := #elapsedMs + 2147483647;
+      END_IF;
+      IF #elapsedMs >= INT_TO_DINT("DB_PerfMon".WindowMs) THEN
+         #slotNo := "DB_PerfMon".WriteIdx + 1;
+         IF #slotNo < 0 OR #slotNo > 119 THEN   // RingSize - 1
+            #slotNo := 0;
+         END_IF;
+         #nextSeq := "DB_PerfMon".Seq + 1;
+         "FC_PerfStamp"(StampDate => #tsDate, StampTime => #tsTime);
+         #ob80InWindow := "DB_PerfMon".OB80Total - "DB_PerfMon".LastOB80Total;
+         "DB_PerfMon".LastOB80Total := "DB_PerfMon".OB80Total;
+         #recordFlags := W#16#0000;
+         IF "DB_PerfMon".FirstWindow THEN
+            #recordFlags := #recordFlags OR W#16#0001;
+         END_IF;
+         IF #ob80InWindow > 0 THEN
+            #recordFlags := #recordFlags OR W#16#0002;
+         END_IF;
+
+         // First the complete record, then Seq, then WriteIdx: this order is what makes the ring safe to read.
+         "DB_PerfMon".Ring[#slotNo].Seq := #nextSeq;
+         "DB_PerfMon".Ring[#slotNo].StampDate := #tsDate;
+         "DB_PerfMon".Ring[#slotNo].StampTime := #tsTime;
+         "DB_PerfMon".Ring[#slotNo].Cycles := "DB_PerfMon".WindowCycles;
+         "DB_PerfMon".Ring[#slotNo].CycMin_ms := INT_TO_REAL("DB_PerfMon".WindowMinMs);
+         "DB_PerfMon".Ring[#slotNo].CycMax_ms := INT_TO_REAL("DB_PerfMon".WindowMaxMs);
+         "DB_PerfMon".Ring[#slotNo].CycAvg_ms := DINT_TO_REAL("DB_PerfMon".WindowSumMs) / DINT_TO_REAL("DB_PerfMon".WindowCycles);
+         "DB_PerfMon".Ring[#slotNo].CommLoad_pct := -1.0;
+         FOR #itemNo := 0 TO 7 DO
+            "DB_PerfMon".Ring[#slotNo].Hist[#itemNo] := "DB_PerfMon".WindowHist[#itemNo];
+         END_FOR;
+         "DB_PerfMon".Ring[#slotNo].Flags := #recordFlags;
+         "DB_PerfMon".Ring[#slotNo].OB80Cnt := DINT_TO_INT(#ob80InWindow);
+         "DB_PerfMon".Seq := #nextSeq;
+         "DB_PerfMon".WriteIdx := #slotNo;
+
+         IF "DB_PerfMon".LifeMinCycle_ms = 0.0 OR INT_TO_REAL("DB_PerfMon".WindowMinMs) < "DB_PerfMon".LifeMinCycle_ms THEN
+            "DB_PerfMon".LifeMinCycle_ms := INT_TO_REAL("DB_PerfMon".WindowMinMs);
+         END_IF;
+         IF INT_TO_REAL("DB_PerfMon".WindowMaxMs) > "DB_PerfMon".LifeMaxCycle_ms THEN
+            "DB_PerfMon".LifeMaxCycle_ms := INT_TO_REAL("DB_PerfMon".WindowMaxMs);
+         END_IF;
+
+         "DB_PerfMon".FirstWindow := FALSE;
+         "DB_PerfMon".WindowStartMs := #tickNowMs;
+         #doReset := TRUE;
+      END_IF;
+   END_IF;
+
+   IF #doReset THEN
+      "DB_PerfMon".WindowCycles := 0;
+      "DB_PerfMon".WindowSumMs := 0;
+      "DB_PerfMon".WindowMinMs := 32767;
+      "DB_PerfMon".WindowMaxMs := 0;
+      FOR #itemNo := 0 TO 7 DO
+         "DB_PerfMon".WindowHist[#itemNo] := 0;
+      END_FOR;
+   END_IF;
+
+   #elapsedMs := #tickNowMs - "DB_PerfMon".SecondStartMs;
+   IF #elapsedMs < 0 THEN
+      #elapsedMs := #elapsedMs + 2147483647;
+   END_IF;
+   #isNewSecond := #elapsedMs >= 1000;
+   IF #isNewSecond THEN
+      "DB_PerfMon".SecondStartMs := #tickNowMs;
+   END_IF;
+   "FC_PerfHealth"(Tick1s := #isNewSecond, LossLimit_s := "DB_PerfHealth".LossLimit_s, Slot := "DB_PerfHealth".MPI);
+   "FC_PerfHealth"(Tick1s := #isNewSecond, LossLimit_s := "DB_PerfHealth".LossLimit_s, Slot := "DB_PerfHealth".PN);
+   "FC_PerfDiag"(Tick1s := #isNewSecond);
+END_FUNCTION

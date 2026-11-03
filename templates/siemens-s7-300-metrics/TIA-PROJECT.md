@@ -1,17 +1,32 @@
 # Build the TIA project
 
-One guide, in the order you do it. Stage 1 is the read test and stands alone. Stage 2 repeats the same steps for the metrics blocks.
-
 **Tested on:** CPU 315-2 PN/DP, `6ES7 315-2EH13-0AB0`. **Needs:** TIA Portal with STEP 7 Professional, because STEP 7 Basic does not cover the S7-300.
 
-**`plc/read_probe.scl` has not been through a TIA compile yet.** A compile error here is the first thing to fix, so please report it.
+There are two ways in:
 
-| Stage | What goes into the CPU | State |
-|---|---|---|
-| 1 | one DB, one FC, one UDT, a call in OB1 | source ready |
-| 2 | the metrics DBs, FCs and FB, plus OB100, OB80, OB82 and OB86 | written after stage 1, because stage 1's numbers size them |
+- **The project archive in `tia/`:** *Project → Retrieve*, then set your CPU and addresses (step 2). The blocks, their numbers and the OB calls are already done, so continue at step 8.
+- **Your own project, from source:** follow every step. Use this when the CPU already runs a program.
 
 The addresses below are examples: use your own.
+
+## The blocks at a glance
+
+| Number | FC | DB | Called from |
+|---|---|---|---|
+| **880** | `FC_PerfMon`, the main function | `DB_PerfMon` | **OB1, first network** |
+| 881 | `FC_PerfDiag` | `DB_PerfDiag` | `FC_PerfMon` |
+| 882 | `FC_PerfHealth` | `DB_PerfHealth` | `FC_PerfMon` |
+| 883 | `FC_PerfStamp` | | the other FCs |
+| 884 | `FC_PerfBoot` | | **OB100** |
+| 885 | `FC_PerfFault` | | **OB80, OB82, OB86** |
+
+**A DB has the same number as the FC that writes it.** The `880` range is used because even crowded programs rarely reach it.
+
+- `FC_PerfMon` measures the cycle and closes one record per second into `DB_PerfMon`, the header and ring of cycle records. It runs the two below it.
+- `FC_PerfDiag` reads the CPU's diagnostics, one request at a time, into `DB_PerfDiag`, along with the last fault and the previous boot.
+- `FC_PerfHealth` runs each path's health loop in `DB_PerfHealth`, one counter per path.
+- `FC_PerfStamp` gives the clock as two DINTs. `FC_PerfBoot` keeps the previous boot's counters and stamps the new boot. `FC_PerfFault` counts and records a fault.
+- *PLC data types* holds `typPerfRecord` and `typPerfHealthSlot`, which have no number.
 
 ## 1. Start from the right project
 
@@ -28,99 +43,111 @@ The addresses below are examples: use your own.
 
 | Setting | Where | Value |
 |---|---|---|
-| PN address | *PROFINET interface [X2] → Ethernet addresses*: add a subnet, *Set IP address in the project* | e.g. `192.0.2.131` / `255.255.255.0` |
+| PN address | *PROFINET interface [X2] → Ethernet addresses*: add a subnet, *Set IP address in the project* | e.g. `192.168.1.10` / `255.255.255.0` |
 | Router | same place | only if the reader is on another subnet |
 | MPI address | *MPI/DP interface [X1] → MPI address* | leave what the bus uses; the example is `2` |
-| Protection | *Protection* | *No protection* for this test. A protected CPU is a separate check later |
+| Protection | *Protection* | *No protection* to start with. A protected CPU is a separate check |
 | Connection resources | *Communication* or *Connection resources* | one free OP connection per path, on top of what is in use |
 
-Note the *Maximum cycle time* (*Cycle*), and the cycle times shown now in *Online & diagnostics → Cycle time*. You compare against them in step 9.
+Note the *Maximum cycle time* (*Cycle*), and the cycle times now in *Online & diagnostics → Cycle time*. You compare against them in step 9.
 
-## 3. System OBs
+## 3. Create the OBs
 
-Add these by hand, *Program blocks → Add new block → Organization block*, in any language. A hand-made OB carries the header the CPU defines, such as `OB1_PREV_CYCLE`, and nothing imported can overwrite your own code.
+*Program blocks → Add new block → Organization block*, for each one the program does not have yet. A hand-made OB carries the header the CPU defines, such as `OB1_PREV_CYCLE`, and nothing imported can overwrite your own code.
 
-| OB | Stage | Purpose |
-|---|---|---|
-| OB1 | 1 | exists already: it gets one call in step 7 |
-| OB100 | 2 | start-up: keeps the previous boot's counters, stamps the new boot |
-| OB80 | 2 | time error: count, then STOP |
-| OB82 | 2 | diagnostic interrupt: count, then STOP |
-| OB86 | 2 | rack or station failure: count, then STOP |
-
-**Stage 1 adds no OB except the call in OB1.** On an S7-300 a missing OB80, OB82 or OB86 normally means STOP on that event, so an empty one would silently remove that reaction. Add them only with the stage 2 code that keeps the reaction.
-
-**If your program already has one of these OBs,** keep it and add only the stage 2 counter network. Your own reaction to the fault stays as it is.
+OB1, OB100, OB80, OB82 and OB86 are needed. They get their calls in step 7.
 
 ## 4. Import the code
 
-1. *External source files → Add new external file →* `plc/read_probe.scl`.
+1. *External source files → Add new external file →* `plc/perf_kit.scl`.
 2. Right-click it, *Generate blocks from source.*
-3. Read the result in the *Info* tab. Any error: stop here.
+3. Read the result in the *Info* tab. Any error: stop here, and **read the first error, at the top of the list.** The rest usually follow from it.
 
-## 5. Confirm what was created
+## 5. Confirm the blocks and set their numbers
 
-| Where in the tree | Block | Number, set in step 6 |
-|---|---|---|
-| *PLC data types* | `typProbeStripe` | `UDT889` |
-| *Program blocks* | `DB_ReadProbe` | `DB889` |
-| *Program blocks* | `FC_ReadProbe` | `FC889` |
+Check that every block in *The blocks at a glance* was created. TIA gives each generated block the next free number, so set them by hand from that table: on each block, *Properties → General → Numbering → Manual.* Check the `880` range is free first.
 
-Open `DB_ReadProbe` after the compile in step 8 and compare the *Offset* column. **A read addresses bytes, so these offsets must match exactly:**
+**The DB numbers matter:** the broker addresses them by number. If you pick others, use them in the route too.
 
-| Tag | Offset |
-|---|---|
-| `Magic` | 0.0 |
-| `Scan` | 12.0 |
-| `LifeMPI`, `EchoMPI` | 24.0, 25.0 |
-| `LifePN`, `EchoPN` | 26.0, 27.0 |
-| `InitDone` | 36.0 |
-| `InitNext` | 38.0 |
-| `Stripe[0]` | 40.0 |
-| `WinStart` | 8232.0 |
-| `Spare` | 8244.0 |
+## 6. Reading from outside
 
-## 6. Block numbers and access
-
-**Numbers.** On each block, *Properties → General → Numbering → Manual.* The `880` range is used because even crowded programs rarely reach it. Check it is free first.
-
-- **The DB number matters:** the broker addresses `DB889` by number. If you pick another, use it in the route too.
-- The FC and UDT numbers only have to be free.
-
-**Reading from outside.** On an S7-300 there is less to set than on newer CPUs:
+On an S7-300 there is less to set than on newer CPUs:
 
 | Setting on an S7-1200/1500 | On an S7-300 |
 |---|---|
 | *Permit access with PUT/GET* | does not exist: the access is always on, subject to the protection level (step 2) |
 | *Optimized block access* off | does not exist: every DB has absolute offsets |
 
-Two things to check, in `DB_ReadProbe`'s *Properties → Attributes*:
+Check these in each DB's *Properties → Attributes*:
 
-- *Only store in load memory* is **off**: such a DB cannot be read at run time.
-- *Data block write-protected in the device* is **off**: the test writes the `Echo` bytes.
+| Attribute | `DB_PerfMon` | `DB_PerfDiag` | `DB_PerfHealth` | Why |
+|---|---|---|---|---|
+| *Only store in load memory* | off | off | off | such a DB cannot be read at run time |
+| *Data block write-protected in the device* | off | off | off | `DB_PerfHealth` takes the `Echo` bytes, and the CPU writes all three |
+| *Non-retain* | off | **off** | off | `DB_PerfDiag` must keep why the CPU stopped |
 
-## 7. Call it
+## 7. The OB calls
 
-**OB1, first network:** call `FC_ReadProbe` and wire `PrevCycle_ms` to `#OB1_PREV_CYCLE`.
+**Do all five. Nothing fails if you miss one:** an empty OB compiles and downloads, and the records still flow, but a boot is never stamped and a fault never recorded. An empty OB80, OB82 or OB86 also stops the CPU reacting to that fault at all.
 
-## 8. Compile and download
+Write them in SCL. If an OB is in LAD or FBD, add the same call as a network. Keep your own code in them.
 
-1. *Compile → Hardware and software (rebuild all).* Check the offsets in step 5 now.
-2. *Download to device,* over whichever path you reach the CPU on today. Read the list of actions before accepting it: look for blocks about to be deleted.
-3. Start the CPU. The PN address is live from this download on: check it answers a ping.
+| OB | Add |
+|---|---|
+| OB1, first network | `"FC_PerfMon"(PrevCycle_ms := #OB1_PREV_CYCLE);` |
+| OB100 | `"FC_PerfBoot"();` |
+| OB80 | `"FC_PerfFault"(OB_Nr := 80, EvClass := #OB80_EV_CLASS, FltId := #OB80_FLT_ID);` then `STP();` |
+| OB82 | `"FC_PerfFault"(OB_Nr := 82, EvClass := #OB82_EV_CLASS, FltId := #OB82_FLT_ID);` then `STP();` |
+| OB86 | `"FC_PerfFault"(OB_Nr := 86, EvClass := #OB86_EV_CLASS, FltId := #OB86_FLT_ID);` then `STP();` |
+
+**`STP();` keeps the reaction the CPU has with no OB at all:** on an S7-300, a missing OB80, OB82 or OB86 normally means STOP on that event, so an OB that only counted would silently remove it. Leave it out only if your safety concept says so. If the OB already has its own reaction, keep that and add just the `FC_PerfFault` call.
+
+## 8. Compile, compare, download
+
+1. *Compile → Hardware and software (rebuild all).*
+2. Open each DB and compare the *Offset* column. **A read addresses bytes, so these must match exactly:**
+
+   | DB | Tag | Offset |
+   |---|---|---|
+   | `DB_PerfMon` | `WriteIdx` | 6.0 |
+   | `DB_PerfMon` | `Seq` | 8.0 |
+   | `DB_PerfMon` | `Edges_ms` | 16.0 |
+   | `DB_PerfMon` | `OB80Total` | 52.0 |
+   | `DB_PerfMon` | `BootDate` | 64.0 |
+   | `DB_PerfMon` | `Ring` | 72.0 |
+   | `DB_PerfMon` | `IsStarted` | 8232.0 |
+   | `DB_PerfDiag` | `DiagSeq` | 4.0 |
+   | `DB_PerfDiag` | `FaultOB` | 8.0 |
+   | `DB_PerfDiag` | `PrevBootDate` | 24.0 |
+   | `DB_PerfDiag` | `Ret` | 48.0 |
+   | `DB_PerfDiag` | `IdOrder` | 72.0 |
+   | `DB_PerfDiag` | `DiagBuffer` | 444.0 |
+   | `DB_PerfDiag` | `Step` | 644.0 |
+   | `DB_PerfHealth` | `MPI.Life` | 8.0 |
+   | `DB_PerfHealth` | `MPI.Echo` | 9.0 |
+   | `DB_PerfHealth` | `PN.Life` | 26.0 |
+   | `DB_PerfHealth` | `PN.Echo` | 27.0 |
+
+3. *Download to device,* over whichever path you reach the CPU on today. Read the list of actions before accepting it: look for blocks about to be deleted.
+4. Start the CPU. The PN address is live from this download on: check it answers a ping.
+5. **Set the CPU's clock to UTC,** in *Online & diagnostics → Functions → Set time.* A local clock has daylight-saving ambiguity. If it must stay local, record the zone wherever you store the data.
 
 ## 9. Confirm it runs
 
-A watch table on `DB_ReadProbe`:
+A watch table:
 
 | Tag | Expect |
 |---|---|
-| `Scan` | counting fast |
-| `InitNext`, `InitDone` | 64 and TRUE within a second |
-| `CycMin_ms`, `CycMax_ms`, `Cycles` | filled, updated each second |
-| `LifeMPI`, `LifePN` | 1 and still, until a reader confirms them |
+| `DB_PerfMon.Seq`, `WriteIdx` | `Seq` up by 1 each second, `WriteIdx` following, 0 to 119 |
+| `DB_PerfMon.BootDate`, `BootTime`, `RestartCount` | today, and 1 or more, after a restart of the CPU. **Still 0 means OB100 has no call:** step 7 |
+| `DB_PerfMon.Ring[0].CycMax_ms`, `Cycles` | filled |
+| `DB_PerfDiag.Step` | 0 to 3 once, then 4 to 8 repeating, one step every 2 seconds |
+| `DB_PerfDiag.Ret[0..7]`, `RetDiagBuffer` | 0, or a code telling which SZL this CPU refuses |
+| `DB_PerfHealth.MPI.Life`, `PN.Life` | 1 and still, until a reader confirms them |
 
-Compare the cycle times with step 2. The probe rewrites 64 stripes every scan on purpose. To see what that costs, set `StripesOff` and watch `CycMin_ms`.
+Compare the cycle times with step 2.
+
+**Set the histogram once, before comparing anything:** `DB_PerfMon.Edges_ms` holds the buckets' upper edges. The default is `2 | 5 | 10 | 20 | 40 | 60 | 100` ms, to separate an idle CPU from one running a real program. A cycle reads in whole milliseconds.
 
 ## 10. The first read
 
@@ -129,7 +156,7 @@ Close any online monitoring first: on MPI it shares the bus and changes the timi
 ```lot
 DEFINE ROUTE S7ReadTest WITH TYPE SIEMENS_S7
     ADD S7_CONFIG
-        WITH IP "192.0.2.131"
+        WITH IP "192.168.1.10"
         WITH CPU_TYPE "S7300"
         WITH RACK 0
         WITH SLOT 2
@@ -140,10 +167,10 @@ DEFINE ROUTE S7ReadTest WITH TYPE SIEMENS_S7
     ADD EVENT ReadAll
         WITH SOURCE_TOPIC "s7test/cmd/read"
         WITH DESTINATION_TOPIC "s7test/res/read"
-        WITH QUERY "{operation: READ, address: DB889.DBD0, data_type: DWORD, count: 2058}"
+        WITH QUERY "{operation: READ, address: DB880.DBD0, data_type: DWORD, count: 2058}"
 ```
 
-Publish anything to `s7test/cmd/read`. `s7test/res/read` answers with `{"success":true,…,"count":2058,"data":{"value_0":1347571522,…}}`: that first value is `16#50524F42`, the letters `PROB`, and it proves the addressing.
+Publish anything to `s7test/cmd/read`. `s7test/res/read` answers with `{"success":true,…,"count":2058,"data":{"value_0":131140,…}}`: that first value is `16#00020044`, `LayoutVersion` 2 and `RecordSize` 68, and it proves the addressing. Remove the route afterwards.
 
 **Over MPI, through an Ethernet gateway,** use the gateway's IP. With an ACCON-NetLink in addressed mode, `SLOT` is the CPU's MPI address, not its real slot, and `CONNECTION_TYPE "OP"` is required.
 
@@ -153,22 +180,17 @@ Publish anything to `s7test/cmd/read`. `s7test/res/read` answers with `{"success
 | `Siemens S7 PLC is not connected` | the route has no connection: check the address and port 102 |
 | Route says added, but stays `Disconnected` | read the broker log; a tier limit is one cause, and each `ADD EVENT` counts as an action |
 
-## 11. Stage 2: the metrics blocks
+## 11. Archive the project
 
-The same steps, with one more source file in step 4, and the OBs of step 3 added. The blocks and their numbers:
+*Project → Archive*, with restorable data discarded, gives a `.zap` file. It opens in the TIA version it was saved with or a newer one, as long as that version still supports the S7-300.
 
-| Block | Purpose |
-|---|---|
-| `DB880` `DB_PerfMon` | header and ring of cycle records |
-| `DB881` `DB_PerfDiag` | last fault, previous boot, diagnostics. Retentive |
-| `DB882` `DB_PerfHealth` | health loop, one counter per path |
-| `DB883` | the aggregator's instance DB |
-| `UDT880`, `FC880`–`FC882`, `FB880` | the record type and the code |
+## Optional: the read test
 
-Set the CPU's clock to UTC. A local clock has daylight-saving ambiguity.
+`plc/read_probe.scl` shows what a whole-DB read delivers over your hardware path and what it costs the CPU: it rewrites a scan counter across 8,232 bytes every cycle, so one read shows how many scans it spans. It is separate from the blocks above, and you do not need it to run them.
 
-**Removing the test,** when it is no longer needed: delete the OB1 call, `FC_ReadProbe`, `DB_ReadProbe` and `typProbeStripe`, then download.
+1. Import it as in step 4 and set the numbers: `FC_ReadProbe` `FC889`, `DB_ReadProbe` `DB889`.
+2. OB1, a network of its own: `"FC_ReadProbe"(PrevCycle_ms := #OB1_PREV_CYCLE);`
+3. In a watch table on `DB_ReadProbe`: `Scan` counts fast, and `InitNext` and `InitDone` reach 64 and TRUE within a second.
+4. Read it as in step 10, with `DB889.DBD0` and `count: 2058`. The first value is `1347571522`, `16#50524F42`, the letters `PROB`.
 
-## 12. The project archive
-
-*Project → Archive*, with restorable data discarded, gives a `.zap` file in `tia/`. To use it, *Project → Retrieve*, then redo steps 2 and 6 for your CPU. It opens in the TIA version it was saved with or a newer one, as long as that version still supports the S7-300.
+To remove it: delete the OB1 call, `FC_ReadProbe`, `DB_ReadProbe` and `typProbeStripe`, then download.
