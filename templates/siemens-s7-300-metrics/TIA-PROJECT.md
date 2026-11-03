@@ -53,7 +53,7 @@ Note the *Maximum cycle time* (*Cycle*), and the cycle times now in *Online & di
 
 ## 3. Create the OBs
 
-*Program blocks → Add new block → Organization block*, for each one the program does not have yet. A hand-made OB carries the header the CPU defines, such as `OB1_PREV_CYCLE`, and nothing imported can overwrite your own code.
+*Program blocks → Add new block → Organization block*, language LAD, for each one the program does not have yet. A hand-made OB carries the header the CPU defines, such as `OB1_PREV_CYCLE`, and nothing imported can overwrite your own code.
 
 OB1, OB100, OB80, OB82 and OB86 are needed. They get their calls in step 7.
 
@@ -88,19 +88,32 @@ Check these in each DB's *Properties → Attributes*:
 
 ## 7. The OB calls
 
+**The CPU runs these OBs itself, on its own event: OB1 every cycle, OB100 at start-up, the others on a fault. Never call one from OB1.** What goes in each is the line below, inside that OB.
+
 **Do all five. Nothing fails if you miss one:** an empty OB compiles and downloads, and the records still flow, but a boot is never stamped and a fault never recorded. An empty OB80, OB82 or OB86 also stops the CPU reacting to that fault at all.
 
-Write them in SCL. If an OB is in LAD or FBD, add the same call as a network. Keep your own code in them.
+**Use LAD.** An OB a program already has is usually LAD, and a new network leaves the rest of it alone. TIA can create a new OB in SCL, but an S7-300 has no SCL network inside a LAD block, so an existing OB takes no text. Each call is a box: drag the FC from *Program blocks* into a new network, or find `STP` in *Instructions*, and fill in its inputs. The `#` names are in each OB's own header, its *Temp* section. Keep your own code in them.
 
-| OB | Add |
-|---|---|
-| OB1, first network | `"FC_PerfMon"(PrevCycle_ms := #OB1_PREV_CYCLE);` |
-| OB100 | `"FC_PerfBoot"();` |
-| OB80 | `"FC_PerfFault"(OB_Nr := 80, EvClass := #OB80_EV_CLASS, FltId := #OB80_FLT_ID);` then `STP();` |
-| OB82 | `"FC_PerfFault"(OB_Nr := 82, EvClass := #OB82_EV_CLASS, FltId := #OB82_FLT_ID);` then `STP();` |
-| OB86 | `"FC_PerfFault"(OB_Nr := 86, EvClass := #OB86_EV_CLASS, FltId := #OB86_FLT_ID);` then `STP();` |
+**Title every network,** so whoever opens a system OB later can see why it was changed.
 
-**`STP();` keeps the reaction the CPU has with no OB at all:** on an S7-300, a missing OB80, OB82 or OB86 normally means STOP on that event, so an OB that only counted would silently remove it. Leave it out only if your safety concept says so. If the OB already has its own reaction, keep that and add just the `FC_PerfFault` call.
+| Where | Network title | Drag in | Input | Wire to |
+|---|---|---|---|---|
+| OB1, first network | Performance Monitor | `FC_PerfMon` | `PrevCycle_ms` | `#OB1_PREV_CYCLE` |
+| OB100 | Performance Boot Log | `FC_PerfBoot` | none |  |
+| OB80 | Performance Diagnostic | `FC_PerfFault` | `OB_Nr` | `80` |
+| OB80 | Performance Diagnostic | `FC_PerfFault` | `EvClass` | `#OB80_EV_CLASS` |
+| OB80 | Performance Diagnostic | `FC_PerfFault` | `FltId` | `#OB80_FLT_ID` |
+| OB80, next network | Stop the CPU, as with no OB | `STP` | none |  |
+| OB82 | Performance Diagnostic | `FC_PerfFault` | `OB_Nr` | `82` |
+| OB82 | Performance Diagnostic | `FC_PerfFault` | `EvClass` | `#OB82_EV_CLASS` |
+| OB82 | Performance Diagnostic | `FC_PerfFault` | `FltId` | `#OB82_FLT_ID` |
+| OB82, next network | Stop the CPU, as with no OB | `STP` | none |  |
+| OB86 | Performance Diagnostic | `FC_PerfFault` | `OB_Nr` | `86` |
+| OB86 | Performance Diagnostic | `FC_PerfFault` | `EvClass` | `#OB86_EV_CLASS` |
+| OB86 | Performance Diagnostic | `FC_PerfFault` | `FltId` | `#OB86_FLT_ID` |
+| OB86, next network | Stop the CPU, as with no OB | `STP` | none |  |
+
+**`STP` keeps the reaction the CPU has with no OB at all:** on an S7-300, a missing OB80, OB82 or OB86 normally means STOP on that event, so an OB that only counted would silently remove it. Leave it out only if your safety concept says so. If the OB already has its own reaction, keep that and add just the `FC_PerfFault` box.
 
 ## 8. Compile, compare, download
 
@@ -189,7 +202,7 @@ Publish anything to `s7test/cmd/read`. `s7test/res/read` answers with `{"success
 `plc/read_probe.scl` shows what a whole-DB read delivers over your hardware path and what it costs the CPU: it rewrites a scan counter across 8,232 bytes every cycle, so one read shows how many scans it spans. It is separate from the blocks above, and you do not need it to run them.
 
 1. Import it as in step 4 and set the numbers: `FC_ReadProbe` `FC889`, `DB_ReadProbe` `DB889`.
-2. OB1, a network of its own: `"FC_ReadProbe"(PrevCycle_ms := #OB1_PREV_CYCLE);`
+2. OB1, a network of its own: drag in `FC_ReadProbe`, and wire `PrevCycle_ms` to `#OB1_PREV_CYCLE`.
 3. In a watch table on `DB_ReadProbe`: `Scan` counts fast, and `InitNext` and `InitDone` reach 64 and TRUE within a second.
 4. Read it as in step 10, with `DB889.DBD0` and `count: 2058`. The first value is `1347571522`, `16#50524F42`, the letters `PROB`.
 

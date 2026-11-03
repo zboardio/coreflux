@@ -17,12 +17,12 @@ A CPU 315-2 PN/DP with a 240-byte PDU, through the `SIEMENS_S7` connector on a C
 
 | Read | MPI at 187.5 kbit/s, through an ACCON-NetLink | PN |
 |---|---|---|
-| `DB_PerfMon`, 8,232 bytes | **1.8 s** | **0.3 s** |
-| `DB_PerfDiag`, 644 bytes | 0.16 s | 0.03 s |
+| `DB_PerfMon`, 8,232 bytes | **1.5 s** | **0.3 s** |
+| `DB_PerfDiag`, 644 bytes | 0.12 s | 0.02 s |
 
-- **Both paths deliver the same bytes:** 92 records present in both reads, none different.
-- **What the blocks cost:** the average cycle rose from 1.06 ms to 1.43 ms, with the optional read test still running in both cases.
+- **Both paths deliver the same bytes:** no record differed in either of two runs, with 92 and 22 records present in both reads.
+- **The cycle with these blocks:** about 2,080 cycles a second, 0.48 ms on average, 2 ms at most. There is no figure yet for this CPU without them.
 - **These are from a CPU running almost nothing.** The same CPU ran a real application at around 40 ms a cycle. A CPU serves communication between its other work, so expect longer reads on a loaded one, and measure on yours.
-- **A read is not atomic.** One read spans about 40 CPU scans, and a read does find records newer than the header it read first. The decoder allows for that, and refuses those until the next read.
+- **A read is not atomic.** One read spans many CPU scans, and a read does find records newer than the header it read first. The decoder allows for that, and refuses those until the next read.
 
 Still to come: LoT notebooks with a simulator, the SQL, the dashboards, `VERIFICATION.md` and `GALLERY.md`.
