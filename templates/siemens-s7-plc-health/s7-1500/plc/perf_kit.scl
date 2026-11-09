@@ -161,7 +161,6 @@ BEGIN
 END_DATA_BLOCK
 
 FUNCTION "FC_PerfStamp" : Void
-{ S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_OUTPUT
       StampDate : DInt;   // YYYYMMDD, UTC
@@ -172,7 +171,7 @@ VERSION : 0.1
       retVal : Int;
    END_VAR
 BEGIN
-   // RD_SYS_T is the CPU's system time, UTC. Set the CPU's clock, or the stamps say 2012.
+   // RD_SYS_T is the CPU system time, UTC. Set the CPU clock, or the stamps say 2012.
    #retVal := RD_SYS_T(OUT => #tsClock);
    #StampDate := UINT_TO_DINT(#tsClock.YEAR) * 10000 + USINT_TO_DINT(#tsClock.MONTH) * 100 + USINT_TO_DINT(#tsClock.DAY);
    #StampTime := USINT_TO_DINT(#tsClock.HOUR) * 10000000 + USINT_TO_DINT(#tsClock.MINUTE) * 100000
@@ -180,7 +179,6 @@ BEGIN
 END_FUNCTION
 
 FUNCTION "FC_PerfBoot" : Void
-{ S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_TEMP
       tsDate : DInt;
@@ -188,7 +186,7 @@ VERSION : 0.1
       slotNo : Int;
    END_VAR
 BEGIN
-   // The kit's startup OB. The order is the point: nothing is zeroed before it is kept.
+   // The kit startup OB. The order is the point: nothing is zeroed before it is kept.
    "DB_PerfDiag".PrevBootDate := "DB_PerfMon".BootDate;
    "DB_PerfDiag".PrevBootTime := "DB_PerfMon".BootTime;
    "DB_PerfDiag".PrevLastSeq := "DB_PerfMon".Seq;
@@ -224,7 +222,6 @@ BEGIN
 END_FUNCTION
 
 FUNCTION "FC_PerfFault" : Void
-{ S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT
       OB_Nr : Int;          // 80, 82, 83, 86, 121 or 122
@@ -250,8 +247,8 @@ VERSION : 0.1
       info3 : Word;
    END_VAR
 BEGIN
-   // Counts and records only. The OB's own reaction, if it has one, stays as the project wrote it. Each input keeps the
-   // type of the OB's start information it is wired to; the three Info words of the slot are packed here.
+   // Counts and records only. The OB own reaction, if it has one, stays as the project wrote it. Each input keeps the
+   // type of the OB start information it is wired to; the three Info words of the slot are packed here.
    #laddrValue := #Laddr;
    #obValue := #CsgOB;
    #info1 := W#16#0000;
@@ -309,7 +306,6 @@ BEGIN
 END_FUNCTION
 
 FUNCTION "FC_PerfHealth" : Void
-{ S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT
       Tick1s : Bool;
@@ -326,7 +322,7 @@ VERSION : 0.1
       tsTime : DInt;
    END_VAR
 BEGIN
-   // One path's loop. It moves on only when Echo confirms Life, so the counter's speed is the speed of the circle.
+   // One path loop. It moves on only when Echo confirms Life, so the counters speed is the speed of the circle.
    #lifeValue := BYTE_TO_INT(#Slot.Life);
    #echoValue := BYTE_TO_INT(#Slot.Echo);
    #prevEchoValue := BYTE_TO_INT(#Slot.PrevEcho);
@@ -362,11 +358,10 @@ BEGIN
 END_FUNCTION
 
 FUNCTION "FC_PerfDiag" : Void
-{ S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT
       Tick1s : Bool;
-      CpuHwId : HW_IO;    // the CPU's hardware identifier, from the system constants (see the guide)
+      CpuHwId : HW_IO;    // the CPU hardware identifier, from the system constants (see the guide)
    END_VAR
    VAR_TEMP
       ledNo : Int;
@@ -380,7 +375,7 @@ VERSION : 0.1
       rtTime : LTime;
    END_VAR
 BEGIN
-   // Step 0: the CPU's identity, once per boot. Get_IM_Data is asynchronous: called each cycle until DONE or ERROR.
+   // Step 0: the CPU identity, once per boot. Get_IM_Data is asynchronous: called each cycle until DONE or ERROR.
    // Then the LEDs and RT_INFO every StepEvery_s seconds.
    IF "DB_PerfDiag".Step = 0 THEN
       #imStatus := W#16#0000;
@@ -442,10 +437,9 @@ BEGIN
 END_FUNCTION
 
 FUNCTION "FC_PerfMon" : Void
-{ S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
    VAR_INPUT
-      CpuHwId : HW_IO;    // the CPU's hardware identifier, passed on to "FC_PerfDiag"
+      CpuHwId : HW_IO;    // the CPU hardware identifier, passed on to "FC_PerfDiag"
    END_VAR
    VAR_TEMP
       itemNo : Int;
@@ -464,7 +458,7 @@ VERSION : 0.1
       doReset : Bool;
    END_VAR
 BEGIN
-   // The one call in the kit's program-cycle OB, which the CPU runs after OB1 each cycle. RUNTIME returns the time
+   // The one call in the kit program-cycle OB, which the CPU runs after OB1 each cycle. RUNTIME returns the time
    // since its previous call, so call to call is one full cycle. Closes a record each WindowMs, and runs the health
    // loop and the diagnostics.
    #doReset := FALSE;
@@ -482,7 +476,7 @@ BEGIN
       #elapsed_s := 0.0;
       #doReset := TRUE;
    ELSIF #elapsed_s <= 0.0 THEN
-      #elapsed_s := 0.0;   // RUNTIME's counter overran: this cycle is not counted
+      #elapsed_s := 0.0;   // the RUNTIME counter overran: this cycle is not counted
    ELSE
       #cycle_ms := LREAL_TO_REAL(#elapsed_s * 1000.0);
       "DB_PerfMon".WindowCycles := "DB_PerfMon".WindowCycles + 1;
