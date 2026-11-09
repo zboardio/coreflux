@@ -105,16 +105,15 @@ If the project already has a program-cycle OB numbered above 880, the kit then r
 
 ## 7. One network in each error OB
 
-**The CPU runs these OBs itself, on their event. Never call one.** Open each error OB **your project already has** and add the kit's call **at its end**, in the OB's own language. Keep your own code as it is. The `#` names are in the OB's own *Input* section.
+**The CPU runs these OBs itself, on their event. Never call one.** Open each error OB **your project already has** and add the kit's call **at its end, in the language the OB was written in**. Keep your own code as it is. The `#` names are in the OB's own *Input* section.
 
+- **A LAD OB**, as most projects have them: a new network at the end, titled *Performance Diagnostic*, with `FC_PerfFault` dragged in from *Program blocks* as a box and its inputs wired as below. (FBD the same way.)
 - **An SCL OB:** one line at the end, with a comment line above it. OB122, for example:
 
   ```
   // Performance Diagnostic: count this call and keep its start information
   "FC_PerfFault"(OB_Nr := 122, FaultId := #Fault_ID, BlockNr := #BlockNr, BlockType := #BlockType, Area := #Area);
   ```
-
-- **A LAD or FBD OB** (common in existing projects; TIA V15.1 has no SCL network inside one): a new network titled *Performance Diagnostic*, with `FC_PerfFault` dragged in as a box.
 
 The inputs per OB, the same in both forms:
 
