@@ -104,9 +104,9 @@ DATA_BLOCK "DB_PerfDiag"
 { S7_Optimized_Access := 'FALSE' }
 VERSION : 0.1
    STRUCT
-      LayoutVersion : Int := 2;       // 0  2 = a family layout, named by Family. The S7-300's is layout 1
+      LayoutVersion : Int := 2;       // 0  2 = a family layout, named by CpuFamily. The S7-300's is layout 1
       BlockSize : Int := 324;         // 2  what a whole read asks for; the work area follows
-      Family : Int := 1500;           // 4
+      CpuFamily : Int := 1500;        // 4  never "Family": FAMILY is a block-header keyword in a TIA source
       Spare6 : Int;                   // 6
       DiagSeq : DInt;                 // 8  raised on every fault and on every change of an LED
       // The newest fault, of any of the six OBs

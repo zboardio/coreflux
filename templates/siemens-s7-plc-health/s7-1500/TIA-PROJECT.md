@@ -136,7 +136,15 @@ If the project already has a program-cycle OB numbered above 880, the kit then r
 
 Inputs not in the table stay open. Each input has the type of the start information it takes (`Laddr` is `HW_ANY`, so it accepts the `HW_IO`, `HW_ANY` and `HW_Device` the OBs hand over), so no conversion box is needed. If TIA names a start-information tag differently in your version, wire the tag of that meaning.
 
-**An error OB your project does not have:** leave it out. What the CPU does without it is its own reaction, and the kit does not change it. To count those events too, create the OB with only the network above, and keep the CPU's reaction where it is STOP: **without OB121 an S7-1500 goes to STOP on a programming error, so a new OB121 also gets a second network with `STP`.** Without OB80, OB82, OB83, OB86 or OB122 the CPU carries on, so those need nothing more.
+**An error OB your project does not have:** the kit works without it, but that OB's events are then not counted. To count them, create the OB (*Add new block → Organization block*, LAD) with the network above, and **keep the reaction the CPU has without it**, because adding an OB changes that reaction:
+
+| OB | Without the OB, the S7-1500… | So a new OB gets |
+|---|---|---|
+| OB80, time error | goes to **STOP when the cycle time is exceeded** (`Fault_ID` `16#01`); ignores the other time errors | a second network, *Stop on cycle time exceeded, as with no OB*: a compare box `#Fault_ID` `==` `16#01` (Byte) feeding the `EN` of `STP` |
+| OB121, programming error | goes to **STOP** | a second network, *Stop the CPU, as with no OB*: `STP` |
+| OB82, OB83, OB86, OB122 | carries on (OB122: writes the buffer entry and stays in RUN) | nothing more |
+
+A second cycle-time overrun in the same cycle stops the CPU whatever OB80 does. Agree any change of reaction with whoever owns the machine's safety concept.
 
 ## 8. Compile, compare, download
 
@@ -152,7 +160,7 @@ Inputs not in the table stay open. Each input has the type of the start informat
    | `DB_PerfMon` | `BootDate` | 64.0 |
    | `DB_PerfMon` | `Ring` | 72.0 |
    | `DB_PerfMon` | `IsStarted` | 8232.0 |
-   | `DB_PerfDiag` | `Family` | 4.0 |
+   | `DB_PerfDiag` | `CpuFamily` | 4.0 |
    | `DB_PerfDiag` | `DiagSeq` | 8.0 |
    | `DB_PerfDiag` | `PrevBootDate` | 24.0 |
    | `DB_PerfDiag` | `Fault` | 60.0 |
