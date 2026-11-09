@@ -1,0 +1,6 @@
+# TIA Portal reads external sources with Windows line endings: V15.1 parsed every SCL statement of an LF-only
+# source as STL (2026-11-09), V20 did not. Keep every PLC source CRLF in the working tree, on any OS.
+*.scl text eol=crlf
+*.awl text eol=crlf
+*.db text eol=crlf
+*.udt text eol=crlf
