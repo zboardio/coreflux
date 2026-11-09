@@ -5,7 +5,7 @@
 The kit is built to go into **a program that already exists** without touching its code:
 
 - **It brings its own program-cycle OB and its own startup OB.** An S7-1500 runs every program-cycle OB each cycle, in number order: OB1, then the others. The kit's OB880 runs after your program and measures from one call to the next, which is one full cycle. Your OB1 and OB100 stay as they are.
-- **Each error OB your project has gets one network at its end** that counts the call and records its start information. Your own networks and your OB's reaction stay as they are.
+- **Each error OB your project has gets one call at its end** that counts the call and records its start information. Your own code and your OB's reaction stay as they are.
 - **The kit writes only its own DBs.** The only value written from outside is one byte per reading path, the health loop's echo.
 
 The addresses below are examples: use your own.
@@ -90,22 +90,35 @@ Retentive memory: the two retained DBs take about 8.7 KB. Check *Program info �
 
 ## 6. Create the kit's two OBs
 
-*Program blocks → Add new block → Organization block*, language **LAD**:
+*Program blocks → Add new block → Organization block*, language **SCL**, number *manual*. Each holds one line:
 
-| Type | Name | Number | Network title | Drag in | Input | Wire to |
-|---|---|---|---|---|---|---|
-| *Program cycle* | `OB_PerfMon` | manual, **880** | Performance Monitor | `FC_PerfMon` | `CpuHwId` | the CPU's hardware identifier, below |
-| *Startup* | `OB_PerfBoot` | manual, **884** | Performance Boot Log | `FC_PerfBoot` | none | |
+| Type | Name | Number | The line |
+|---|---|---|---|
+| *Program cycle* | `OB_PerfMon` | **880** | `"FC_PerfMon"(CpuHwId := "Local~Common");` |
+| *Startup* | `OB_PerfBoot` | **884** | `"FC_PerfBoot"();` |
 
-**The CPU's hardware identifier:** *PLC tags → Show all tags → System constants*, the constant of the CPU itself, of type `Hw_SubModule` or `Hw_Io`, usually named `Local~Common`. The same number is under *Device view → the CPU → Properties → System constants*. Drag it onto `CpuHwId`.
+Put a comment above each line saying why it is there, for whoever opens the OB later: `// Performance Monitor: the kit's cycle measurement, records, health loop and diagnostics` and `// Performance Boot Log: keeps the previous boot's counters, stamps this boot`.
+
+**The CPU's hardware identifier:** *PLC tags → Show all tags → System constants*, the constant of the CPU itself, of type `Hw_SubModule` or `Hw_Io`, usually named `Local~Common`. The same number is under *Device view → the CPU → Properties → System constants*. If yours has another name, use it in the OB880 line.
 
 If the project already has a program-cycle OB numbered above 880, the kit then runs before that one, not last. Nothing breaks: the cycle is still measured from call to call.
 
 ## 7. One network in each error OB
 
-**The CPU runs these OBs itself, on their event. Never call one.** Open each error OB **your project already has**, add a new network **at the end**, title it, and drag in `FC_PerfFault`. The `#` names are in the OB's own *Input* section. Keep your own networks as they are.
+**The CPU runs these OBs itself, on their event. Never call one.** Open each error OB **your project already has** and add the kit's call **at its end**, in the OB's own language. Keep your own code as it is. The `#` names are in the OB's own *Input* section.
 
-| OB | Network title | Input | Wire to |
+- **An SCL OB:** one line at the end, with a comment line above it. OB122, for example:
+
+  ```
+  // Performance Diagnostic: count this call and keep its start information
+  "FC_PerfFault"(OB_Nr := 122, FaultId := #Fault_ID, BlockNr := #BlockNr, BlockType := #BlockType, Area := #Area);
+  ```
+
+- **A LAD or FBD OB** (common in existing projects; TIA V15.1 has no SCL network inside one): a new network titled *Performance Diagnostic*, with `FC_PerfFault` dragged in as a box.
+
+The inputs per OB, the same in both forms:
+
+| OB | LAD network title | Input | Wire to |
 |---|---|---|---|
 | OB80, time error | Performance Diagnostic | `OB_Nr` | `80` |
 |  |  | `FaultId` | `#Fault_ID` |
@@ -136,12 +149,12 @@ If the project already has a program-cycle OB numbered above 880, the kit then r
 
 Inputs not in the table stay open. Each input has the type of the start information it takes (`Laddr` is `HW_ANY`, so it accepts the `HW_IO`, `HW_ANY` and `HW_Device` the OBs hand over), so no conversion box is needed. If TIA names a start-information tag differently in your version, wire the tag of that meaning.
 
-**An error OB your project does not have:** the kit works without it, but that OB's events are then not counted. To count them, create the OB (*Add new block → Organization block*, LAD) with the network above, and **keep the reaction the CPU has without it**, because adding an OB changes that reaction:
+**An error OB your project does not have:** the kit works without it, but that OB's events are then not counted. To count them, create the OB (*Add new block → Organization block*, SCL) with the call above, and **keep the reaction the CPU has without it**, because adding an OB changes that reaction:
 
 | OB | Without the OB, the S7-1500… | So a new OB gets |
 |---|---|---|
-| OB80, time error | goes to **STOP when the cycle time is exceeded** (`Fault_ID` `16#01`); ignores the other time errors | a second network, *Stop on cycle time exceeded, as with no OB*: a compare box `#Fault_ID` `==` `16#01` (Byte) feeding the `EN` of `STP` |
-| OB121, programming error | goes to **STOP** | a second network, *Stop the CPU, as with no OB*: `STP` |
+| OB80, time error | goes to **STOP when the cycle time is exceeded** (`Fault_ID` `16#01`); ignores the other time errors | after the call: `// Stop on cycle time exceeded, as with no OB80` and `IF #Fault_ID = 16#01 THEN STP(); END_IF;` |
+| OB121, programming error | goes to **STOP** | after the call: `// Stop, as with no OB121` and `STP();` |
 | OB82, OB83, OB86, OB122 | carries on (OB122: writes the buffer entry and stays in RUN) | nothing more |
 
 A second cycle-time overrun in the same cycle stops the CPU whatever OB80 does. Agree any change of reaction with whoever owns the machine's safety concept.
