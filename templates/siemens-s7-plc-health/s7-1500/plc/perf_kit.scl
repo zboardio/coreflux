@@ -124,7 +124,7 @@ VERSION : 0.1
       // The CPU, read by "FC_PerfDiag"
       Led : Array[0..7] of Int;       // 180 RET_VAL of LED: [0] RUN/STOP, [1] ERROR, [2] MAINT, [3..7] not read. 1 off,
                                       //     2/3 colour 1/2 on, 4/5 flashing, 6 alternating; negative = refused
-      ImStatus : Word;                // 196 Get_IM_Data STATUS of the identity read, 0 = read
+      ImStatus : Word;                // 196 reserved: an identity read (RDREC of I&M0), 0 = none
       RtRet : Array[0..3] of Int;     // 198 RT_INFO RET_VAL: modes 11, 23, 24, 25. 16#8452 = wrong INFO type
       Spare206 : Int;                 // 206
       CommLoad_pct : Real;            // 208 average communication load
@@ -135,12 +135,12 @@ VERSION : 0.1
       ModProblem : Array[0..15] of Byte;      // 240 reserved: ModuleStates, modules with a problem
       ModRet : Int;                   // 256 reserved
       Spare258 : Int;                 // 258
-      IM0 : Array[0..63] of Byte;     // 260 I&M0 of the CPU as Get_IM_Data returns it: order number, serial, revisions
+      IM0 : Array[0..63] of Byte;     // 260 reserved: I&M0 of the CPU (order number, serial, revisions), not read yet
       // Work area, 324.., not part of a read
-      Step : Int;                     // 324 0 = identity next; the startup OB sets it back to 0
+      Step : Int;                     // 324 0 = just booted; the startup OB sets it back to 0
       Wait_s : Int;                   // 326 seconds until the next step
       StepEvery_s : Int := 2;         // 328 seconds between two reads of the LEDs and RT_INFO
-      ImBusy : Bool;                  // 330.0
+      ImBusy : Bool;                  // 330.0 reserved
       PrevLed : Array[0..7] of Int;   // 332 to see an LED change
    END_STRUCT;
 BEGIN
@@ -212,7 +212,6 @@ BEGIN
 
    "DB_PerfDiag".Step := 0;
    "DB_PerfDiag".Wait_s := 0;
-   "DB_PerfDiag".ImBusy := FALSE;
    "DB_PerfHealth".Reserve.Seen := FALSE;
    "DB_PerfHealth".Reserve.Healthy := FALSE;
    "DB_PerfHealth".Reserve.Age_s := 0;
@@ -366,28 +365,16 @@ VERSION : 0.1
    VAR_TEMP
       ledNo : Int;
       ledChanged : Bool;
-      imDone : Bool;
-      imBusy : Bool;
-      imError : Bool;
-      imStatus : Word;
       rtRet : Int;
       rtPercent : UInt;
       rtTime : LTime;
    END_VAR
 BEGIN
-   // Step 0: the CPU identity, once per boot. Get_IM_Data is asynchronous: called each cycle until DONE or ERROR.
-   // Then the LEDs and RT_INFO every StepEvery_s seconds.
+   // The LEDs and RT_INFO every StepEvery_s seconds. No identity read: Get_IM_Data is not in TIA V15.1 for FW V2.6
+   // (2026-11-09), so IM0 stays reserved and the reader takes the identity from its configuration.
    IF "DB_PerfDiag".Step = 0 THEN
-      #imStatus := W#16#0000;
-      Get_IM_Data(LADDR := #CpuHwId, IM_TYPE := 0, DONE => #imDone, BUSY => #imBusy, ERROR => #imError, STATUS => #imStatus,
-                  DATA := "DB_PerfDiag".IM0);
-      "DB_PerfDiag".ImBusy := #imBusy;
-      IF #imDone OR #imError THEN
-         "DB_PerfDiag".ImStatus := #imStatus;
-         "DB_PerfDiag".Step := 1;
-         "DB_PerfDiag".Wait_s := 0;
-      END_IF;
-      RETURN;
+      "DB_PerfDiag".Step := 1;
+      "DB_PerfDiag".Wait_s := 0;
    END_IF;
 
    IF #Tick1s AND "DB_PerfDiag".Wait_s > 0 THEN

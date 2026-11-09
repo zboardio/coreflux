@@ -20,7 +20,7 @@ Each folder holds `TIA-PROJECT.md`, the one guide from the IP address to the fir
 | Cycle time: min, max and average per second, and a histogram | `OB1_PREV_CYCLE` | `RUNTIME`, in the kit's own program-cycle OB |
 | Communication load | not available | `RT_INFO` |
 | Error OBs: counted, with the last start information | OB80, OB82, OB86 | OB80, OB82, OB83, OB86, OB121, OB122 |
-| Identity | SZL `0111`, `011C` | `Get_IM_Data` |
+| Identity | SZL `0111`, `011C` | from the reader's configuration (`Get_IM_Data` is not in TIA V15.1 for FW V2.x) |
 | LEDs | SZL `0074` | `LED` |
 | Diagnostic buffer | the newest 10 entries, SZL `00A0` | not readable from the program on this family |
 | Boot stamp, and the previous boot's counters | OB100 | the kit's own startup OB |

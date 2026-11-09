@@ -26,7 +26,7 @@ The addresses below are examples: use your own.
 **A DB has the same number as the FC that writes it, and an OB the number of the FC it calls.** The `880` range is used because even crowded programs rarely reach it.
 
 - `FC_PerfMon` measures the cycle with `RUNTIME` and closes one record per second into `DB_PerfMon`, the header and the ring of cycle records, with the communication load from `RT_INFO`. It runs the two below it.
-- `FC_PerfDiag` reads the CPU's identity once per boot with `Get_IM_Data`, then its LEDs and `RT_INFO`'s cycle figures every 2 seconds, into `DB_PerfDiag`. That DB also holds one slot per error OB and the previous boot's counters.
+- `FC_PerfDiag` reads the CPU's LEDs and `RT_INFO`'s cycle figures every 2 seconds into `DB_PerfDiag`. The CPU's identity is not read by the program: `Get_IM_Data` is not available in TIA V15.1 for this firmware, so the reader takes it from its configuration. That DB also holds one slot per error OB and the previous boot's counters.
 - `FC_PerfHealth` runs the health loop in `DB_PerfHealth`, one counter per reading path.
 - `FC_PerfStamp` gives the CPU's clock, UTC, as two DINTs. `FC_PerfBoot` keeps the previous boot's counters and stamps the new boot. `FC_PerfFault` counts and records one error-OB call.
 - *PLC data types* holds `typPerfRecord`, `typPerfHealthSlot` and `typPerfFaultSlot`, which have no number.
@@ -196,8 +196,7 @@ A watch table:
 | `DB_PerfMon.Seq`, `WriteIdx` | `Seq` up by 1 each second, `WriteIdx` following, 0 to 119 |
 | `DB_PerfMon.BootDate`, `BootTime`, `RestartCount` | today, UTC, and 1 or more after a STOP to RUN. **Still 0 means OB884 has no call:** step 6 |
 | `DB_PerfMon.Ring[0].CycMax_ms`, `Cycles`, `CommLoad_pct` | filled; `CommLoad_pct` -1 means `RT_INFO` refused it, see `DB_PerfDiag.RtRet` |
-| `DB_PerfDiag.Step`, `ImStatus` | `Step` 1 within seconds of a start, `ImStatus` 0 |
-| `DB_PerfDiag.IM0` | the CPU's order number readable in its bytes. `ImStatus` `16#8093` means this firmware will not write I&M0 into a byte array: report it |
+| `DB_PerfDiag.Step` | 1 within a second of a start |
 | `DB_PerfDiag.Led[0..2]` | RUN/STOP, ERROR, MAINT: 1 off, 2 or 3 on, 4 or 5 flashing |
 | `DB_PerfDiag.RtRet[0..3]` | 0 each. `16#8452` (shown as -31662) means `RT_INFO` wanted another INFO type: report it |
 | `DB_PerfDiag.Fault[i].Count` | rising for each error OB that is being called. A project with I/O not wired shows OB122 here |
