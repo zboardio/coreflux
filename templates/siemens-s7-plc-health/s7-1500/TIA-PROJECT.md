@@ -1,6 +1,6 @@
 # Add the kit to an S7-1500 project
 
-**Written for:** CPU 1511-1 PN, `6ES7 511-1AK02-0AB0`, firmware V2.6, in TIA Portal V15.1, added to a project that already runs a program; its first compile on that CPU is next. **Needs:** STEP 7 Professional or Basic for your CPU's firmware, and no licence: the kit uses only PUT/GET and standard instructions.
+**Written for:** CPU 1511-1 PN, `6ES7 511-1AK02-0AB0`, firmware V2.6, in TIA Portal V15.1, added to a project that already runs a program. The source generates without errors in TIA V15.1; its first run on the CPU is next. **Needs:** STEP 7 Professional or Basic for your CPU's firmware, and no licence: the kit uses only PUT/GET and standard instructions.
 
 The kit is built to go into **a program that already exists** without touching its code:
 
@@ -66,7 +66,7 @@ The kit stamps every record with the CPU's system time, which is UTC. **A CPU th
 ## 4. Import the code
 
 1. *External source files → Add new external file →* `plc/perf_kit.scl`.
-2. Right-click it, *Generate blocks from source.*
+2. Right-click it, *Generate blocks from source.* The file has Windows line endings (CRLF), and must keep them: an older TIA, V15.1 for one, reads the code of a file saved with Unix line endings (LF) as STL and fails on its first statement, while the DBs still compile. If you edit the file, use an editor that keeps CRLF.
 3. Read the result in the *Info* tab. Any error: stop here, and **read the first error, at the top of the list.** The rest usually follow from it.
 
 The source names no block numbers, so nothing it generates can overwrite a block of yours. A block of the same **name** would be replaced: check *Program blocks* has none starting with `FC_Perf`, `DB_Perf`, `OB_Perf` or `typPerf` first.
