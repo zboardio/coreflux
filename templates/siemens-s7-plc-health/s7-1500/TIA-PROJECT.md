@@ -54,6 +54,8 @@ The addresses below are examples: use your own.
 | Access level | *Protection & Security → Access level* | one that allows HMI access: *Full access* or *Read access*; with a password for full access, the reader still works |
 | Connection resources | *Online & diagnostics → Connection information* | one free connection per reading path, on top of what is in use |
 
+> **Important: PUT/GET is part of the hardware configuration.** A download of the program alone, as done while the CPU runs, does not load it: download *Hardware configuration* too, which stops the CPU. Until then every read is refused, and the reader reports an error ending in `81 04`.
+
 PUT/GET has no authentication: whoever reaches port 102 can read and write. Keep the reader on the machine network, never on an office or public one.
 
 Note the *Cycle → Maximum cycle time*, and the cycle times now in *Online & diagnostics → Cycle time*. You compare against them in step 9.
@@ -107,52 +109,176 @@ Put a comment above each line saying why it is there, for whoever opens the OB l
 
 If the project already has a program-cycle OB numbered above 880, the kit then runs before that one, not last. Nothing breaks: the cycle is still measured from call to call.
 
-## 7. One network in each error OB
+## 7. One call in each error OB
 
-**The CPU runs these OBs itself, on their event. Never call one.** Open each error OB **your project already has** and add the kit's call **at its end, in the language the OB was written in**. Keep your own code as it is. The `#` names are in the OB's own *Input* section.
+**The CPU runs these OBs itself, on their event. Never call one.** Each error OB **your project already has** gets the kit's call **at its end**. Your own code and the OB's reaction stay as they are.
 
-- **A LAD OB**, as most projects have them: a new network at the end, titled *Performance Diagnostic*, with `FC_PerfFault` dragged in from *Program blocks* as a box and its inputs wired as below. (FBD the same way.)
-- **An SCL OB:** one line at the end, with a comment line above it. OB122, for example:
+### 7.1 Review the OBs first
 
-  ```
-  // Performance Diagnostic: count this call and keep its start information
-  "FC_PerfFault"(OB_Nr := 122, FaultId := #Fault_ID, BlockNr := #BlockNr, BlockType := #BlockType, Area := #Area);
-  ```
+> **Important: look at every error OB before adding anything.** How an error OB was made is its author's decision, and it can differ from OB to OB in one project. Two things decide which call fits, and a call of the wrong form does not compile.
 
-The inputs per OB, the same in both forms:
+Open OB80, OB82, OB83, OB86, OB121 and OB122, as far as the project has them, and note for each:
 
-| OB | LAD network title | Input | Wire to |
-|---|---|---|---|
-| OB80, time error | Performance Diagnostic | `OB_Nr` | `80` |
-|  |  | `FaultId` | `#Fault_ID` |
-|  |  | `CsgOB` | `#Csg_OBnr` |
-|  |  | `CsgPrio` | `#Csg_Prio` |
-| OB82, diagnostic error | Performance Diagnostic | `OB_Nr` | `82` |
-|  |  | `IoState` | `#IO_state` |
-|  |  | `Laddr` | `#LADDR` |
-|  |  | `Channel` | `#Channel` |
-| OB83, pull or plug | Performance Diagnostic | `OB_Nr` | `83` |
-|  |  | `EvClass` | `#Event_Class` |
-|  |  | `FaultId` | `#Fault_ID` |
-|  |  | `Laddr` | `#LADDR` |
-| OB86, rack or station failure | Performance Diagnostic | `OB_Nr` | `86` |
-|  |  | `EvClass` | `#Event_Class` |
-|  |  | `FaultId` | `#Fault_ID` |
-|  |  | `Laddr` | `#LADDR` |
-| OB121, programming error | Performance Diagnostic | `OB_Nr` | `121` |
-|  |  | `FaultId` | `#Fault_ID` |
-|  |  | `BlockNr` | `#BlockNr` |
-|  |  | `BlockType` | `#BlockType` |
-|  |  | `Area` | `#Area` |
-| OB122, I/O access error | Performance Diagnostic | `OB_Nr` | `122` |
-|  |  | `FaultId` | `#Fault_ID` |
-|  |  | `BlockNr` | `#BlockNr` |
-|  |  | `BlockType` | `#BlockType` |
-|  |  | `Area` | `#Area` |
+| Look at | What you find | Meaning |
+|---|---|---|
+| The block interface | an **Input** section with `Fault_ID`, `LADDR`, `Event_Class`, `BlockNr`… | **S7-1500 start information**: an OB created in TIA for an S7-1500 |
+|  | a **Temp** section with `OB82_EV_CLASS`, `OB82_FLT_ID`, `OB82_MDL_ADDR`… | **classic start information**: an OB that came from an S7-300/400 project, usually by migration |
+| The language, in the block's *Properties → General* | LAD, FBD, SCL or STL | which form of the call the OB accepts |
 
-Inputs not in the table stay open. Each input has the type of the start information it takes (`Laddr` is `HW_ANY`, so it accepts the `HW_IO`, `HW_ANY` and `HW_Device` the OBs hand over), so no conversion box is needed. If TIA names a start-information tag differently in your version, wire the tag of that meaning.
+Then take the call from this table:
 
-**An error OB your project does not have:** the kit works without it, but that OB's events are then not counted. To count them, create the OB (*Add new block → Organization block*, SCL) with the call above, and **keep the reaction the CPU has without it**, because adding an OB changes that reaction:
+| Start information | Language of the OB | The call |
+|---|---|---|
+| S7-1500 | SCL | paste the OB's SCL call from 7.2 at the end |
+| S7-1500 | LAD or FBD | add a network at the end, *Insert SCL network*, and paste the same SCL call. Or, as a box: drag `FC_PerfFault` in and fill all eleven inputs from the table in 7.4 |
+| classic | STL | add a network at the end and paste the OB's STL call from 7.3. An STL OB accepts neither a LAD nor an SCL network |
+| classic | LAD, FBD or SCL | the call of 7.2, with the two classic tags of 7.3 on `EvClass` and `FaultId` and `0` on every other input |
+
+**Starting a new project, or adding an error OB the project lacks:** create it in TIA for the S7-1500, in **SCL** (or LAD with an SCL network), and paste the call from 7.2. That form records the most: the hardware identifier, the block and the area. Do not convert a classic OB to gain it: leave the author's OB as it is and use the classic call.
+
+**Every input of `FC_PerfFault` must be given a value, in every language, or the call does not compile.** An FC keeps no values of its own, so TIA accepts no open input. The calls below are complete: copy them whole.
+
+### 7.2 S7-1500 start information: the SCL calls
+
+```
+// OB80, time error. Performance Diagnostic: count this call and keep its start information
+"FC_PerfFault"(OB_Nr := 80, EvClass := 0, FaultId := #Fault_ID, Laddr := 0, IoState := 0, Channel := 0,
+               CsgOB := #Csg_OBnr, CsgPrio := #Csg_Prio, BlockNr := 0, BlockType := 0, Area := 0);
+
+// OB82, diagnostic error. Performance Diagnostic: count this call and keep its start information
+"FC_PerfFault"(OB_Nr := 82, EvClass := 0, FaultId := 0, Laddr := #LADDR, IoState := #IO_state, Channel := #Channel,
+               CsgOB := 0, CsgPrio := 0, BlockNr := 0, BlockType := 0, Area := 0);
+
+// OB83, pull or plug. Performance Diagnostic: count this call and keep its start information
+"FC_PerfFault"(OB_Nr := 83, EvClass := #Event_Class, FaultId := #Fault_ID, Laddr := #LADDR, IoState := 0, Channel := 0,
+               CsgOB := 0, CsgPrio := 0, BlockNr := 0, BlockType := 0, Area := 0);
+
+// OB86, rack or station failure. Performance Diagnostic: count this call and keep its start information
+"FC_PerfFault"(OB_Nr := 86, EvClass := #Event_Class, FaultId := #Fault_ID, Laddr := #LADDR, IoState := 0, Channel := 0,
+               CsgOB := 0, CsgPrio := 0, BlockNr := 0, BlockType := 0, Area := 0);
+
+// OB121, programming error. Performance Diagnostic: count this call and keep its start information
+"FC_PerfFault"(OB_Nr := 121, EvClass := 0, FaultId := #Fault_ID, Laddr := 0, IoState := 0, Channel := 0,
+               CsgOB := 0, CsgPrio := 0, BlockNr := #BlockNr, BlockType := #BlockType, Area := #Area);
+
+// OB122, I/O access error. Performance Diagnostic: count this call and keep its start information
+"FC_PerfFault"(OB_Nr := 122, EvClass := 0, FaultId := #Fault_ID, Laddr := 0, IoState := 0, Channel := 0,
+               CsgOB := 0, CsgPrio := 0, BlockNr := #BlockNr, BlockType := #BlockType, Area := #Area);
+```
+
+### 7.3 Classic start information: the STL calls
+
+A classic OB hands over other tags, of other types. The call takes the two that match: the event class and the fault code (`OBxx_FLT_ID`, in OB121 and OB122 `OBxx_SW_FLT`). So a classic OB is **counted, stamped and recorded with its event class and fault code**; the module address, the block and the memory area are not recorded yet.
+
+```
+// OB80, time error
+      CALL "FC_PerfFault"
+         OB_Nr      := 80
+         EvClass    := #OB80_EV_CLASS
+         FaultId    := #OB80_FLT_ID
+         Laddr      := 0
+         IoState    := 16#0
+         Channel    := 0
+         CsgOB      := 0
+         CsgPrio    := 0
+         BlockNr    := 0
+         BlockType  := 0
+         Area       := 0
+
+// OB82, diagnostic error
+      CALL "FC_PerfFault"
+         OB_Nr      := 82
+         EvClass    := #OB82_EV_CLASS
+         FaultId    := #OB82_FLT_ID
+         Laddr      := 0
+         IoState    := 16#0
+         Channel    := 0
+         CsgOB      := 0
+         CsgPrio    := 0
+         BlockNr    := 0
+         BlockType  := 0
+         Area       := 0
+
+// OB83, pull or plug
+      CALL "FC_PerfFault"
+         OB_Nr      := 83
+         EvClass    := #OB83_EV_CLASS
+         FaultId    := #OB83_FLT_ID
+         Laddr      := 0
+         IoState    := 16#0
+         Channel    := 0
+         CsgOB      := 0
+         CsgPrio    := 0
+         BlockNr    := 0
+         BlockType  := 0
+         Area       := 0
+
+// OB86, rack or station failure
+      CALL "FC_PerfFault"
+         OB_Nr      := 86
+         EvClass    := #OB86_EV_CLASS
+         FaultId    := #OB86_FLT_ID
+         Laddr      := 0
+         IoState    := 16#0
+         Channel    := 0
+         CsgOB      := 0
+         CsgPrio    := 0
+         BlockNr    := 0
+         BlockType  := 0
+         Area       := 0
+
+// OB121, programming error
+      CALL "FC_PerfFault"
+         OB_Nr      := 121
+         EvClass    := #OB121_EV_CLASS
+         FaultId    := #OB121_SW_FLT
+         Laddr      := 0
+         IoState    := 16#0
+         Channel    := 0
+         CsgOB      := 0
+         CsgPrio    := 0
+         BlockNr    := 0
+         BlockType  := 0
+         Area       := 0
+
+// OB122, I/O access error
+      CALL "FC_PerfFault"
+         OB_Nr      := 122
+         EvClass    := #OB122_EV_CLASS
+         FaultId    := #OB122_SW_FLT
+         Laddr      := 0
+         IoState    := 16#0
+         Channel    := 0
+         CsgOB      := 0
+         CsgPrio    := 0
+         BlockNr    := 0
+         BlockType  := 0
+         Area       := 0
+```
+
+### 7.4 The inputs, for a LAD or FBD box
+
+S7-1500 start information; bold is the OB's own tag, everything else the constant `0`:
+
+| Input | OB80 | OB82 | OB83 | OB86 | OB121 | OB122 |
+|---|---|---|---|---|---|---|
+| `OB_Nr` | `80` | `82` | `83` | `86` | `121` | `122` |
+| `EvClass` | `0` | `0` | **`#Event_Class`** | **`#Event_Class`** | `0` | `0` |
+| `FaultId` | **`#Fault_ID`** | `0` | **`#Fault_ID`** | **`#Fault_ID`** | **`#Fault_ID`** | **`#Fault_ID`** |
+| `Laddr` | `0` | **`#LADDR`** | **`#LADDR`** | **`#LADDR`** | `0` | `0` |
+| `IoState` | `0` | **`#IO_state`** | `0` | `0` | `0` | `0` |
+| `Channel` | `0` | **`#Channel`** | `0` | `0` | `0` | `0` |
+| `CsgOB` | **`#Csg_OBnr`** | `0` | `0` | `0` | `0` | `0` |
+| `CsgPrio` | **`#Csg_Prio`** | `0` | `0` | `0` | `0` | `0` |
+| `BlockNr` | `0` | `0` | `0` | `0` | **`#BlockNr`** | **`#BlockNr`** |
+| `BlockType` | `0` | `0` | `0` | `0` | **`#BlockType`** | **`#BlockType`** |
+| `Area` | `0` | `0` | `0` | `0` | **`#Area`** | **`#Area`** |
+
+`Laddr` is `HW_ANY`, so it accepts the `HW_IO`, `HW_ANY` and `HW_Device` the OBs hand over, and no conversion box is needed. If TIA names a start-information tag differently in your version, wire the tag of that meaning.
+
+Use one call per OB: two calls in one OB count every event twice.
+
+**An error OB your project does not have:** the kit works without it, but that OB's events are then not counted. To count them, create the OB (*Add new block → Organization block*, SCL) with its call from 7.2, and **keep the reaction the CPU has without it**, because adding an OB changes that reaction:
 
 | OB | Without the OB, the S7-1500… | So a new OB gets |
 |---|---|---|
