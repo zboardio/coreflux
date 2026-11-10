@@ -1,7 +1,8 @@
 // Cycle-time metrics and diagnostics for an S7-1500. Build guide: ../TIA-PROJECT.md
 //
 // The kit's own program-cycle OB calls "FC_PerfMon", which also runs the health loop and the diagnostics. The kit's own
-// startup OB calls "FC_PerfBoot". Each error OB the project has (OB80, OB82, OB83, OB86, OB121, OB122) gets one network
+// startup OB calls "FC_PerfBoot". Neither OB is in this file: create "OB_PerfMon" (OB880, program cycle) and
+// "OB_PerfBoot" (OB884, startup) in TIA, one line each, as the guide says in step 6. Each error OB the project has (OB80, OB82, OB83, OB86, OB121, OB122) gets one network
 // that calls "FC_PerfFault"; nothing else in those OBs changes. It writes only to the DBs in this file, and the only thing
 // written from outside is each path's Echo byte in "DB_PerfHealth".
 //

@@ -12,16 +12,18 @@ The addresses below are examples: use your own.
 
 ## The blocks at a glance
 
-| Number | Block | Called from |
-|---|---|---|
-| **OB880** | `OB_PerfMon`, program cycle, created by hand | the CPU, every cycle, after OB1 |
-| **OB884** | `OB_PerfBoot`, startup, created by hand | the CPU, at each STOP to RUN |
-| **880** | `FC_PerfMon` and `DB_PerfMon` | OB880 |
-| 881 | `FC_PerfDiag` and `DB_PerfDiag` | `FC_PerfMon` |
-| 882 | `FC_PerfHealth` and `DB_PerfHealth` | `FC_PerfMon` |
-| 883 | `FC_PerfStamp` | the other FCs |
-| 884 | `FC_PerfBoot` | OB884 |
-| 885 | `FC_PerfFault` | **OB80, OB82, OB83, OB86, OB121, OB122**, the ones your project has |
+| Number | Block | Where it comes from | Called from |
+|---|---|---|---|
+| **OB880** | `OB_PerfMon`, program cycle | **you create it**, step 6 | the CPU, every cycle, after OB1 |
+| **OB884** | `OB_PerfBoot`, startup | **you create it**, step 6 | the CPU, at each STOP to RUN |
+| **880** | `FC_PerfMon` and `DB_PerfMon` | `plc/perf_kit.scl` | `OB_PerfMon` (OB880) |
+| 881 | `FC_PerfDiag` and `DB_PerfDiag` | `plc/perf_kit.scl` | `FC_PerfMon` |
+| 882 | `FC_PerfHealth` and `DB_PerfHealth` | `plc/perf_kit.scl` | `FC_PerfMon` |
+| 883 | `FC_PerfStamp` | `plc/perf_kit.scl` | the other FCs |
+| 884 | `FC_PerfBoot` | `plc/perf_kit.scl` | `OB_PerfBoot` (OB884) |
+| 885 | `FC_PerfFault` | `plc/perf_kit.scl` | **OB80, OB82, OB83, OB86, OB121, OB122**, the ones your project has |
+
+**The source file holds the work, the OBs only start it.** `plc/perf_kit.scl` generates the three types, the three DBs and the six FCs. No OB is in it: `OB_PerfMon` and `OB_PerfBoot` are two one-line blocks you create in TIA, where an OB gets its kind (program cycle, startup), and each only calls the FC of the same name and number. So `OB_PerfBoot` (OB884) is the CPU's entry at startup, and `FC_PerfBoot` (FC884) is the code it runs.
 
 **A DB has the same number as the FC that writes it, and an OB the number of the FC it calls.** The `880` range is used because even crowded programs rarely reach it.
 
@@ -89,6 +91,8 @@ Then each DB's *Properties → Attributes*:
 Retentive memory: the two retained DBs take about 8.7 KB. Check *Program info → Resources → Retentive memory* still has room after the compile.
 
 ## 6. Create the kit's two OBs
+
+> **Important: the two OBs are of different types. `OB_PerfMon` is a *Program cycle* OB, `OB_PerfBoot` is a *Startup* OB.** The type is chosen in the *Add new block* dialog and cannot be changed afterwards: a wrong one is deleted and created again. If `OB_PerfBoot` is created as *Program cycle*, the kit still compiles and runs, but it starts a new boot every cycle: `DB_PerfMon.RestartCount` runs up to 32767, `Seq` never climbs and the ring keeps no history. After correcting it, set `DB_PerfMon.RestartCount` back to 0 in a watch table.
 
 *Program blocks → Add new block → Organization block*, language **SCL**, number *manual*. Each holds one line:
 
