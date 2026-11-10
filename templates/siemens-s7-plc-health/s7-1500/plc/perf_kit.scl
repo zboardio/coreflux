@@ -3,8 +3,9 @@
 // The kit's own program-cycle OB calls "FC_PerfMon", which also runs the health loop and the diagnostics. The kit's own
 // startup OB calls "FC_PerfBoot". Neither OB is in this file: create "OB_PerfMon" (OB880, program cycle) and
 // "OB_PerfBoot" (OB884, startup) in TIA, one line each, as the guide says in step 6. Each error OB the project has (OB80, OB82, OB83, OB86, OB121, OB122) gets one network
-// that calls "FC_PerfFault"; nothing else in those OBs changes. It writes only to the DBs in this file, and the only thing
-// written from outside is each path's Echo byte in "DB_PerfHealth".
+// that calls "FC_PerfFault" (an OB with S7-1500 start information) or "FC_PerfFaultClassic" (an OB with the classic, S7-300/400
+// style start information, as a migrated project has); nothing else in those OBs changes. It writes only to the DBs in this
+// file, and the only thing written from outside is each path's Echo byte in "DB_PerfHealth".
 //
 // A reader decodes by offset, big-endian, so every DB here has optimized access off, and a layout change raises that
 // DB's LayoutVersion. DB_PerfMon's read part (0..8231) and DB_PerfHealth are byte-identical to the S7-300 kit's.
@@ -42,6 +43,16 @@ VERSION : 0.1
    END_STRUCT;
 END_TYPE
 
+// typPerfFaultSlot holds the newest call of one error OB in one of two forms. Bit 7 of EvClass tells them apart: clear,
+// "FC_PerfFault" wrote S7-1500 start information (EvClass is Event_Class or 0, Info1..3 as the comments below say); set,
+// "FC_PerfFaultClassic" wrote classic start information (EvClass is OBxx_EV_CLASS + 16#80, FaultId OBxx_FLT_ID or SW_FLT):
+//   OB80   Info1 ERROR_INFO, Info2 ERR_EV_CLASS:ERR_EV_NUM, Info3 OB_PRIORITY:OB_NUM
+//   OB82   Info1 MDL_ADDR, bit 15 set for an output module (IO_FLAG 16#55); Info2 bytes 8:9, Info3 bytes 10:11 of the OB's TEMP
+//   OB83   Info1 MDL_ADDR, bit 15 set for a peripheral output (MDL_TD 16#55); Info2 RACK_NUM, Info3 MDL_TYPE
+//   OB86   Info1 MDL_ADDR, Info2:Info3 RACKS_FLTD as one DWORD (bytes 8 to 11 of the OB's TEMP)
+//   OB121  Info1 BLK_NUM, Info2 BLK_TYPE:RESERVED_1 (area and access type), Info3 FLT_REG
+//   OB122  Info1 BLK_NUM, Info2 BLK_TYPE:MEM_AREA, Info3 MEM_ADDR
+// No classic event class has bit 7 set (they are 16#25 to 16#39), and "FC_PerfFault" clears it, so the rule is exact.
 TYPE "typPerfFaultSlot"
 VERSION : 0.1
    STRUCT
@@ -291,7 +302,91 @@ BEGIN
    END_IF;
    "DB_PerfDiag".Fault[#slotNo].LastDate := #tsDate;
    "DB_PerfDiag".Fault[#slotNo].LastTime := #tsTime;
-   "DB_PerfDiag".Fault[#slotNo].EvClass := #EvClass;
+   "DB_PerfDiag".Fault[#slotNo].EvClass := #EvClass AND B#16#7F;   // bit 7 marks the classic form: never set here
+   "DB_PerfDiag".Fault[#slotNo].FaultId := #FaultId;
+   "DB_PerfDiag".Fault[#slotNo].Info1 := #info1;
+   "DB_PerfDiag".Fault[#slotNo].Info2 := #info2;
+   "DB_PerfDiag".Fault[#slotNo].Info3 := #info3;
+   "DB_PerfDiag".FaultOB := #OB_Nr;
+   "DB_PerfDiag".FaultDate := #tsDate;
+   "DB_PerfDiag".FaultTime := #tsTime;
+   IF "DB_PerfDiag".FaultCount < 32767 THEN
+      "DB_PerfDiag".FaultCount := "DB_PerfDiag".FaultCount + 1;
+   END_IF;
+   "DB_PerfDiag".DiagSeq := "DB_PerfDiag".DiagSeq + 1;
+END_FUNCTION
+
+FUNCTION "FC_PerfFaultClassic" : Void
+VERSION : 0.1
+   VAR_INPUT
+      OB_Nr : Int;          // 80, 82, 83, 86, 121 or 122
+      EvClass : Byte;       // byte 0 of the start information, every OB: #OBxx_EV_CLASS
+      FaultId : Byte;       // byte 1, every OB: #OBxx_FLT_ID (OB121, OB122: #OBxx_SW_FLT)
+      Byte4 : Byte;         // byte 4: OB121, OB122 #OBxx_BLK_TYPE; else 16#0
+      Byte5 : Byte;         // byte 5: OB82 #OB82_IO_FLAG, OB83 #OB83_MDL_TD, OB121 #OB121_RESERVED_1, OB122 #OB122_MEM_AREA; else 16#0
+      ModAddr : Int;        // bytes 6-7 where they are an Int: OB82, OB86 #OBxx_MDL_ADDR (as migrated); else 0
+      Word6 : Word;         // bytes 6-7 where they are a Word: OB80 ERROR_INFO, OB83 MDL_ADDR, OB121 FLT_REG, OB122 MEM_ADDR
+      Word8 : Word;         // bytes 8-9: OB83 RACK_NUM, OB121 and OB122 BLK_NUM; OB80, OB82, OB86 the OB's %LW8
+      Word10 : Word;        // bytes 10-11: OB83 MDL_TYPE; OB80, OB82, OB86 the OB's %LW10; OB121, OB122 16#0 (PRG_ADDR, no room)
+   END_VAR
+   VAR_TEMP
+      slotNo : Int;
+      tsDate : DInt;
+      tsTime : DInt;
+      info1 : Word;
+      info2 : Word;
+      info3 : Word;
+   END_VAR
+BEGIN
+   // The same slot as "FC_PerfFault", for an error OB with classic (S7-300/400 style) start information: 20 bytes of TEMP,
+   // each input of the type of its tag, so an STL CALL needs no conversion. Packing per OB: the comment above
+   // typPerfFaultSlot. EvClass gets bit 7, the mark of this form. OB82, OB83 and OB86 take MDL_ADDR on ModAddr (Int, as
+   // migrated) or on Word6 (Word, as the S7-300 manual declares it), the other one 0. Called up to thousands of times a
+   // second (OB122 on unwired I/O): one CASE and a few moves.
+   #info1 := #Word6;
+   #info2 := #Word8;
+   #info3 := #Word10;
+   CASE #OB_Nr OF
+      80:
+         #slotNo := 0;
+         "DB_PerfMon".OB80Total := "DB_PerfMon".OB80Total + 1;
+      82:
+         #slotNo := 1;
+         "DB_PerfMon".OB82Events := "DB_PerfMon".OB82Events + 1;
+         #info1 := INT_TO_WORD(#ModAddr) OR #Word6;
+         IF BYTE_TO_INT(#Byte5) = 85 THEN   // IO_FLAG 16#55: an output module. An address never reaches bit 15
+            #info1 := #info1 OR W#16#8000;
+         END_IF;
+      83:
+         #slotNo := 2;
+         #info1 := INT_TO_WORD(#ModAddr) OR #Word6;
+         IF BYTE_TO_INT(#Byte5) = 85 THEN   // MDL_TD 16#55: a peripheral output
+            #info1 := #info1 OR W#16#8000;
+         END_IF;
+      86:
+         #slotNo := 3;
+         "DB_PerfMon".OB86Events := "DB_PerfMon".OB86Events + 1;
+         #info1 := INT_TO_WORD(#ModAddr) OR #Word6;
+      121, 122:
+         IF #OB_Nr = 121 THEN
+            #slotNo := 4;
+         ELSE
+            #slotNo := 5;
+         END_IF;
+         #info1 := #Word8;
+         #info2 := BYTE_TO_WORD(#Byte4);
+         #info2 := SHL(IN := #info2, N := 8) OR BYTE_TO_WORD(#Byte5);
+         #info3 := #Word6;
+      ELSE
+         RETURN;
+   END_CASE;
+   "FC_PerfStamp"(StampDate => #tsDate, StampTime => #tsTime);
+   IF "DB_PerfDiag".Fault[#slotNo].Count < 2147483647 THEN
+      "DB_PerfDiag".Fault[#slotNo].Count := "DB_PerfDiag".Fault[#slotNo].Count + 1;
+   END_IF;
+   "DB_PerfDiag".Fault[#slotNo].LastDate := #tsDate;
+   "DB_PerfDiag".Fault[#slotNo].LastTime := #tsTime;
+   "DB_PerfDiag".Fault[#slotNo].EvClass := #EvClass OR B#16#80;
    "DB_PerfDiag".Fault[#slotNo].FaultId := #FaultId;
    "DB_PerfDiag".Fault[#slotNo].Info1 := #info1;
    "DB_PerfDiag".Fault[#slotNo].Info2 := #info2;
