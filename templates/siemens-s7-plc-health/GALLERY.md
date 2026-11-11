@@ -10,15 +10,15 @@ about the template; the rest of this folder is the fuller record.
 | Short description * | ≤ 100 | Cycle times, error-OB calls and a health loop from S7-300/S7-1500 PLCs into a UNS and TimescaleDB. |
 | Content | Markdown | the `## Content` section below |
 | Category | one | Manufacturing |
-| Broker version * | one | 2.22.0 |
+| Broker version * | one | v2.22 |
 | Difficulty * | one | advanced |
 | GitHub repository | optional | https://github.com/zboardio/coreflux/tree/main/templates/siemens-s7-plc-health |
 | Tags | ≤ 8 | `PLC` · `Siemens S7` · `industrial` · `health monitoring` · `uns` · `Python` · `timescaledb` · `grafana` |
 | .lotnb files | ≤ 5, ≤ 5 MB each | `siemens-s7-plc-health-s7-300.lotnb` · `siemens-s7-plc-health-s7-1500.lotnb` · `siemens-s7-plc-health-simulator.lotnb` |
 
-**Broker version:** the notebooks need 2.22 or newer and are verified on 2.22.0. The form's choices seen on
-2026-11-11 were `2.14.3`, `v2.2` and `v2.0`: if it still offers no 2.22, pick none of those blindly; ask the gallery to
-add it, and the Prerequisites state the requirement in any case.
+**Broker version:** declare **v2.22**. The notebooks need 2.22 or newer and are verified on 2.22.0. The form's choices
+seen on 2026-11-11 were `2.14.3`, `v2.2` and `v2.0`; the gallery has to offer v2.22 before this template is submitted.
+Never pick an older version to get past the form: the notebooks do not run there.
 
 ## Content
 

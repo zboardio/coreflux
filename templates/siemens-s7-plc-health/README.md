@@ -103,8 +103,11 @@ count as actions, and so does a Python script):
 - Without a PLC: a family notebook without its Route cell plus the simulator, 1 connector and 12 actions; both families
   and the simulator, 1 connector and 18 actions.
 - The documented Rule: refused on Community (Rules need Growth or Enterprise).
-- Noticed on the way: after a `-removeRoute`, 2.22.0's licence counter dropped every route event, not only the removed
-  route's, so these figures were each measured on a fresh broker.
+- **Keep headroom under the 24 actions.** Measured on 2.22.0 Community: after an action is removed (`-removeAction`), the
+  broker's usage figure no longer counts the route events, and it then accepts more actions than the tier allows. At its
+  next restart it loads the actions and skips every route, so nothing is read from the PLC any more; only the broker log
+  says so. If you delete and add actions next to these notebooks, restart the broker and read its usage (`/license` on the
+  ops port) before you rely on it. Reported to Coreflux. The figures above were each measured on a fresh broker.
 
 A second PLC of either family is one more connector and 10 more actions (its route, six actions): beyond Community.
 
