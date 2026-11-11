@@ -1,0 +1,6 @@
+# No app plugins. The file exists because Grafana logs an error at every start when this folder is missing; the
+# dashboards need only the PostgreSQL datasource built into Grafana.
+
+apiVersion: 1
+
+apps: []

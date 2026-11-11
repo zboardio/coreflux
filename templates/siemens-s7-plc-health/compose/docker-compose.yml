@@ -1,0 +1,121 @@
+# Siemens S7 PLC health: the quick-start stack. Broker, Hub, the historian (TimescaleDB with the template's SQL applied
+# on first start), Grafana with the template's dashboards, and, on request, two mock PLCs that speak S7.
+#
+#   cp .env.example .env            # fill in every value first (the generators are in the file)
+#   docker compose up -d                      # with your own PLCs
+#   docker compose --profile mock up -d       # with the two mock PLCs, no hardware
+#
+# Hub:     http://localhost:3000 -> New Connection -> Host `coreflux-broker`, port 1883 (not `localhost`: the Hub
+#          connects server-side). Change the default root password before anything else.
+# Grafana: http://localhost:3001, user admin, GRAFANA_ADMIN_PASSWORD. The home page is the PLC fleet.
+# Broker env and secret for the store route (Hub > System Config > ENV & Secrets): TIMESCALE_HOST=timescaledb,
+#          TIMESCALE_DB=<TIMESCALE_DB>, TIMESCALE_USER=uns_writer, and the SECRET TIMESCALE_PASSWORD=<UNS_WRITER_PASSWORD>.
+# Mock PLCs: point the routes at `mock-plc-s7-300` (PLC01) and `mock-plc-s7-1500` (PLC02) instead of the example
+#          addresses. `docker compose exec mock-plc-s7-300 touch /tmp/kit-stop` puts one into STOP, `rm /tmp/kit-stop`
+#          back to RUN.
+#
+# Every port is published on 127.0.0.1 only. A real site puts the broker on the OT network: S7 has no authentication.
+
+services:
+  coreflux-broker:
+    image: coreflux/coreflux-mqtt-broker:2.22.0   # the notebooks need 2.22 or newer (PUBLISH … RETAIN)
+    restart: unless-stopped
+    # broker-config.json is FORCED on every start: anonymous login off, durability on. Routes publish under an empty
+    # user name, which is also what an anonymous client presents, so the notebooks' Rule is only sound with it off.
+    command: ["--config", "/config/broker-config.json", "--config-force"]
+    environment:
+      - COREFLUX_DURABILITY_ENABLED=true
+      # Encrypts the secret store that holds TIMESCALE_PASSWORD. Unset, the key is derived from the machine and a
+      # restore onto other hardware can no longer read it. Generate once, keep it in your password manager.
+      - COREFLUX_SECRET_KEY=${COREFLUX_SECRET_KEY:?set COREFLUX_SECRET_KEY in .env}
+    ports:
+      - "127.0.0.1:${MQTT_PORT:-1883}:1883"
+    volumes:
+      # The secret store, the durability WAL and the notebooks' state live here: back it up.
+      - coreflux_broker_data:/etc/project
+      - ./broker-config.json:/config/broker-config.json:ro
+
+  coreflux-hub:
+    image: coreflux/coreflux-hub:2.12.0   # the Hub released with broker 2.22.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HUB_PORT:-3000}:3000"
+    volumes:
+      - coreflux_hub_data:/opt/coreflux-hub/data
+
+  # ── The historian. On its FIRST start (an empty volume) initdb/ applies ../sql in order and creates the two roles,
+  # uns_writer (the broker's store route: INSERT only) and grafana_reader (SELECT only). To re-apply a newer SQL later,
+  # run the same files with psql against the running database: every file is idempotent.
+  timescaledb:
+    image: timescale/timescaledb-ha:pg17.11-ts2.30.1
+    restart: unless-stopped
+    shm_size: 256m
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      - POSTGRES_DB=${TIMESCALE_DB:-plc}
+      - UNS_WRITER_PASSWORD=${UNS_WRITER_PASSWORD:?set UNS_WRITER_PASSWORD in .env}
+      - GRAFANA_READER_PASSWORD=${GRAFANA_READER_PASSWORD:?set GRAFANA_READER_PASSWORD in .env}
+      - TIMESCALEDB_TELEMETRY=off
+      # The broker's POSTGRESQL route keeps a connection pool of its own; leave room above timescaledb-tune's 50.
+      - TS_TUNE_MAX_CONNS=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    ports:
+      - "127.0.0.1:${TIMESCALE_PORT:-5432}:5432"
+    volumes:
+      - timescale_data:/home/postgres/pgdata/data   # the -ha image keeps its data here, not in /var/lib/postgresql
+      - ../sql:/plc-sql:ro
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+
+  # ── Grafana: the template's provisioning tree, ../grafana/provisioning (the datasource by uid, the dashboards, the
+  # alert rules). The datasource reads its connection from these variables, which must reach the CONTAINER.
+  grafana:
+    image: grafana/grafana:13.2.0
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/json/PLC/plc-fleet.json
+      # Nothing is fetched from the internet: the pages need no plugin, so the stack also starts offline.
+      - GF_PLUGINS_PREINSTALL_DISABLED=true
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
+      - GF_NEWS_NEWS_FEED_ENABLED=false
+      - GF_DATABASE_WAL=true
+      - TIMESCALE_HOST=timescaledb:5432
+      - TIMESCALE_DB=${TIMESCALE_DB:-plc}
+      - GRAFANA_READER_USER=grafana_reader
+      - GRAFANA_READER_PASSWORD=${GRAFANA_READER_PASSWORD:?set GRAFANA_READER_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+
+  # ── Two mock PLCs (profile `mock`): a python-snap7 server each, holding the kit's three DBs and running the kit's
+  # algorithm (one record a second, the health loop, error-OB calls). An S7-300 with DB_PerfDiag layout 1 and a
+  # diagnostic buffer; an S7-1500 with layout 2, an OB122 flood and classic OB82/OB86 calls. They prove the broker side,
+  # never a CPU: a real one is slower, has a smaller PDU and a cycle.
+  mock-plc-s7-300:
+    profiles: ["mock"]
+    build: ./mock-plc
+    restart: unless-stopped
+    command: ["python", "-u", "kit_mock.py", "--family", "s7-300"]
+
+  mock-plc-s7-1500:
+    profiles: ["mock"]
+    build: ./mock-plc
+    restart: unless-stopped
+    command: ["python", "-u", "kit_mock.py", "--family", "s7-1500"]
+
+volumes:
+  coreflux_broker_data:
+  coreflux_hub_data:
+  timescale_data:
+  grafana_data:

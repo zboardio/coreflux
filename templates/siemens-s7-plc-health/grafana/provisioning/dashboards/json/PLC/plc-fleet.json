@@ -1,0 +1,1400 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Every PLC in the historian, worst first, from the view plc_latest: how many are in RUN, STOP, unreachable or silent; which path is down; whose health loop or cycle is in trouble; what fired. Click a PLC for the detail page of its family. Filters $area, $family, $model. Data: the PLC historian (TimescaleDB), its view plc_latest and roll-ups.\n\nGENERATED from the template maintainers' dashboard definitions (one for every PLC family) — do not edit it in this repository, a change is regenerated over; in your own copy, adapt it freely.",
+  "editable": false,
+  "graphTooltip": 1,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "home",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "PLC fleet",
+      "type": "link",
+      "url": "/d/plc-fleet"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "S7-300 detail",
+      "type": "link",
+      "url": "/d/plc-detail-s7-300"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "S7-1500 detail",
+      "type": "link",
+      "url": "/d/plc-detail-s7-1500"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "panels": [],
+      "title": "Fleet — now",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "How many PLCs (of the filter) are in each state now, from plc_latest (the same functions as the detail tiles). RUN = the broker's CpuScanning verdict true on an online path. STOP / STARTUP = a path answers but Seq is frozen (STOP — FAULT included). UNREACHABLE = no path online. NO DATA = the broker sends nothing for that PLC (no read in 90 s), or a path is online with no scanning verdict yet. path down = in RUN or STOP with at least one of its paths not online (one path of two: the fault is on that path). health loop = stalled or corrupt on a path. cycle ≥ 80 % = the longest cycle of the last 5 min at 80 % of that PLC's watchdog. Which PLCs: the table below, worst first.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PLCs"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "blue",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RUN"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "NO DATA"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "path down"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cycle ≥ 80 %"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 101,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"PLCs\", count(*) FILTER (WHERE state = 3) AS \"RUN\", count(*) FILTER (WHERE state IN (0, 1, 2)) AS \"STOP / STARTUP\", count(*) FILTER (WHERE state = -1) AS \"UNREACHABLE\", count(*) FILTER (WHERE state IS NULL OR state = -2) AS \"NO DATA\", count(*) FILTER (WHERE state IS NOT NULL AND state <> -1 AND paths_online < paths_total) AS \"path down\", count(*) FILTER (WHERE health IN (1, 2)) AS \"health loop\", count(*) FILTER (WHERE cyc_max_pct >= 80) AS \"cycle ≥ 80 %\" FROM plc_latest WHERE area IN ($area) AND family IN ($family) AND model IN ($model)",
+          "refId": "A"
+        }
+      ],
+      "title": "Fleet now",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "One row per PLC from the view plc_latest, worst first (severity: 5 STOP — FAULT or UNREACHABLE, 4 STOP, 3 NO DATA, 2 STARTUP, a path not online, the health loop stalled or corrupt, or the cycle at 80 % of the watchdog, 1 error-OB calls in 24 h or the cycle at 50 %, 0 nothing to see). Click a PLC for its detail page. paths = each path it is read over with its DeviceStatus. cycle = the newest window's average and the longest of the last 5 min; of watchdog = that longest against the PLC's own maximum cycle time. error-OB calls 24 h: plc_faults_24h() (S7-300: OB80 calls and faults before STOP; S7-1500: the calls of its six error OBs). last good read = seconds since a read without error.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PLC"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "Open PLC detail",
+                    "url": "/d/${__data.fields.detail}?var-plc=${__data.fields.PLC}&${__url_time_range}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "state"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "-1": {
+                        "color": "orange",
+                        "index": 4,
+                        "text": "UNREACHABLE"
+                      },
+                      "-2": {
+                        "color": "text",
+                        "index": 5,
+                        "text": "UNKNOWN"
+                      },
+                      "0": {
+                        "color": "red",
+                        "index": 3,
+                        "text": "STOP"
+                      },
+                      "1": {
+                        "color": "red",
+                        "index": 2,
+                        "text": "STOP — FAULT"
+                      },
+                      "2": {
+                        "color": "blue",
+                        "index": 1,
+                        "text": "STARTUP"
+                      },
+                      "3": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "RUN"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "NO DATA"
+                      }
+                    },
+                    "type": "special"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "health loop"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "OK"
+                      },
+                      "1": {
+                        "color": "orange",
+                        "index": 1,
+                        "text": "STALLED"
+                      },
+                      "2": {
+                        "color": "red",
+                        "index": 2,
+                        "text": "CORRUPT"
+                      },
+                      "3": {
+                        "color": "text",
+                        "index": 3,
+                        "text": "NOT JUDGED"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "—"
+                      }
+                    },
+                    "type": "special"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "paths"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cycle avg"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cycle max 5 min"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "of watchdog"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "gauge",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 50
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error-OB calls 24 h"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last good read"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "none in 24 h"
+                      }
+                    },
+                    "type": "special"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last boot"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "detail"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 110,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT plc_id AS \"PLC\", area, model, firmware, state, path_states AS \"paths\", health AS \"health loop\", cyc_avg_ms AS \"cycle avg\", cyc_max_5m_ms AS \"cycle max 5 min\", cyc_max_pct AS \"of watchdog\", faults_24h AS \"error-OB calls 24 h\", data_age_s AS \"last good read\", last_boot AS \"last boot\", severity, CASE family WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' ELSE 'plc-fleet' END AS \"detail\" FROM plc_latest WHERE area IN ($area) AND family IN ($family) AND model IN ($model) ORDER BY severity DESC, faults_24h DESC, plc_id",
+          "refId": "A"
+        }
+      ],
+      "title": "PLCs — worst first",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "severity": true
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "description": "Every rule of rules-plc.yml with its instances, one per PLC (and path) it fires for. As provisioned, the notification policy mutes every alert: the state shows here and nothing is sent. Each rule exists once per PLC family and links to its panel on that family's detail page, with the PLC selected.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "id": 111,
+      "options": {
+        "alertInstanceLabelFilter": "",
+        "alertName": "",
+        "dashboardAlerts": false,
+        "groupBy": [],
+        "groupMode": "default",
+        "maxItems": 50,
+        "showInstances": true,
+        "sortOrder": 1,
+        "stateFilter": {
+          "error": true,
+          "firing": true,
+          "noData": true,
+          "normal": true,
+          "pending": true,
+          "recovering": true
+        },
+        "viewMode": "list"
+      },
+      "title": "PLC alerts — state on this Grafana",
+      "type": "alertlist"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "id": 200,
+      "panels": [],
+      "title": "State over time",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "One lane per PLC: its state at the range's start and after every change of the broker's DeviceStatus or CpuScanning verdict on its paths (plc_state_change, kept forever; plc_verdict_state()). RUN, STOP (an online path, Seq frozen), UNREACHABLE (no path online), UNKNOWN, NO VERDICT (none stored yet). Verdicts only: an outage of the broker itself does not appear here (the table above says NO DATA). Cheap at any range: a few rows a day per PLC.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          },
+          "mappings": [
+            {
+              "options": {
+                "-1": {
+                  "color": "orange",
+                  "index": 2,
+                  "text": "UNREACHABLE"
+                },
+                "-2": {
+                  "color": "text",
+                  "index": 3,
+                  "text": "UNKNOWN"
+                },
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "STOP"
+                },
+                "3": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "RUN"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "text",
+                  "index": 0,
+                  "text": "NO VERDICT"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "id": 210,
+      "options": {
+        "alignValue": "left",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "mergeValues": true,
+        "rowHeight": 0.8,
+        "showValue": "never",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH p AS (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)), t AS (SELECT p.plc_id, $__timeFrom()::timestamptz AS time FROM p UNION SELECT s.plc_id, s.ts FROM plc_state_change s JOIN p USING (plc_id) WHERE $__timeFilter(s.ts) AND s.signal IN ('DeviceStatus', 'CpuScanning') UNION SELECT p.plc_id, least(now(), $__timeTo()::timestamptz) FROM p) SELECT time, plc_id AS metric, CASE plc_verdict_state(plc_id, time) WHEN 'run' THEN 3 WHEN 'frozen' THEN 0 WHEN 'unreachable' THEN -1 WHEN 'unknown' THEN -2 END AS value FROM t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU state per PLC — the broker's verdicts",
+      "type": "state-timeline"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "id": 300,
+      "panels": [],
+      "title": "Inventory",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "What the fleet is made of: PLCs per family, model (plc_model: the hardware) and firmware (as the CPU reports it — an S7-300's SZL 0x0111 — else as configured in plc_registry), and where they sit. A firmware that differs within one model is the row to look at.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PLCs"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 41
+      },
+      "id": 310,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(r.family, m.family, '(unknown)') AS family, coalesce(r.model, '(unknown)') AS model, coalesce(plc_firmware_of(r.plc_id), '(unknown)') AS firmware, count(*) AS \"PLCs\", string_agg(DISTINCT coalesce(r.area, '(none)'), ', ') AS \"areas\" FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE r.plc_id IN (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) GROUP BY 1, 2, 3 ORDER BY 1, 2, 3",
+          "refId": "A"
+        }
+      ],
+      "title": "By family, model and firmware",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "PLCs per area (plc_registry.area: where each sits) and the models there. The state of each: the table above, filtered by $area.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PLCs"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 41
+      },
+      "id": 311,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT a.area, sum(a.n) AS \"PLCs\", string_agg(a.model || ' × ' || a.n, ', ' ORDER BY a.model) AS \"models\" FROM (SELECT coalesce(r.area, '(none)') AS area, coalesce(r.model, '(unknown)') AS model, count(*) AS n FROM plc_registry r WHERE r.plc_id IN (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) GROUP BY 1, 2) a GROUP BY a.area ORDER BY a.area",
+          "refId": "A"
+        }
+      ],
+      "title": "By area",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 49
+      },
+      "id": 400,
+      "panels": [],
+      "title": "Cycle — compared",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Every PLC's OB1 cycle over the selected range, the closest to its watchdog first: the weighted average and the longest cycle, against the PLC's own maximum cycle time (plc_registry.watchdog_ms, else its model's preset). From the 5 min roll-up (2 years; real time, so the newest minutes count), the 1 h roll-up beyond. A PLC with no record in the range has no row. Click a PLC for its histogram.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PLC"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "Open PLC detail",
+                    "url": "/d/${__data.fields.detail}?var-plc=${__data.fields.PLC}&${__url_time_range}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "watchdog"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max of watchdog"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "gauge",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 50
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cycles"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "detail"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "id": 410,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH c AS ( SELECT plc_id, max(cyc_max_ms) AS mx, sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0) AS av, sum(cycles) AS n FROM plc_cycle_5m WHERE plc_id IN (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) AND $__timeFilter(bucket) AND $__timeFrom() > now() - interval '729 days' GROUP BY 1 UNION ALL SELECT plc_id, max(cyc_max_ms), sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0), sum(cycles) FROM plc_cycle_1h WHERE plc_id IN (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) AND $__timeFilter(bucket) AND NOT $__timeFrom() > now() - interval '729 days' GROUP BY 1) SELECT c.plc_id AS \"PLC\", coalesce(r.model, '(unknown)') AS model, c.av AS \"avg\", c.mx AS \"max\", plc_watchdog_ms(c.plc_id) AS \"watchdog\", round((c.mx / plc_watchdog_ms(c.plc_id) * 100)::numeric, 1) AS \"max of watchdog\", c.n AS \"cycles\", CASE plc_family(c.plc_id) WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' ELSE 'plc-fleet' END AS \"detail\" FROM c JOIN plc_registry r USING (plc_id) ORDER BY 6 DESC NULLS LAST, 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycle time against the watchdog, over the range",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "id": 500,
+      "panels": [],
+      "title": "Faults and state changes",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "What happened in the fleet in the range, newest first: every change of the broker's verdicts (CpuScanning, DeviceStatus, Health per path), every fault an S7-300's error OB recorded before a STOP, and the newest call of each S7-1500 error OB with Siemens' meaning (plc_ob_call_text; a busy OB appears once, with its count). The diagnostic buffer and every call: the PLC's detail page.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PLC"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "targetBlank": false,
+                    "title": "Open PLC detail",
+                    "url": "/d/${__data.fields.detail}?var-plc=${__data.fields.PLC}&${__url_time_range}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "source"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "path"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "detail"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 61
+      },
+      "id": 510,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH p AS (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) SELECT e.*, CASE plc_family(e.\"PLC\") WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' ELSE 'plc-fleet' END AS \"detail\" FROM ( (SELECT s.ts AS \"time\", s.plc_id AS \"PLC\", 'verdict' AS \"source\", s.via AS \"path\", s.signal || ' ' || coalesce(s.prev, '—') || ' → ' || s.value AS \"event\" FROM plc_state_change s JOIN p USING (plc_id) WHERE $__timeFilter(s.ts)) UNION ALL (SELECT f.ts_fault, f.plc_id, 'fault before STOP', NULL, 'OB' || f.fault_ob || ', event class 0x' || upper(to_hex(f.ev_class::integer)) || ', fault id 0x' || upper(to_hex(f.flt_id::integer)) FROM plc_fault f JOIN p USING (plc_id) WHERE $__timeFilter(f.ts_fault)) UNION ALL (SELECT o.ts_plc, p.plc_id, 'error OB, newest call', o.via, o.ob || ' ' || o.fault_code || coalesce(' ' || o.fault_text, '') || ', ' || o.calls || ' calls since boot' FROM p CROSS JOIN unnest('{80,82,83,86,121,122}'::smallint[]) AS k(ob), LATERAL (SELECT * FROM plc_ob_call_text t WHERE t.plc_id = p.plc_id AND t.ob_nr = k.ob AND $__timeFilter(t.ts_plc) ORDER BY t.ts_plc DESC LIMIT 1) o) ORDER BY 1 DESC LIMIT 200) e ORDER BY 1 DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Feed — newest first",
+      "transformations": [],
+      "type": "table"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "fleet",
+    "generated",
+    "plc",
+    "siemens"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescale-edge"
+        },
+        "definition": "SELECT DISTINCT coalesce(area, '(none)') FROM plc_registry ORDER BY 1",
+        "includeAll": true,
+        "label": "Area",
+        "multi": true,
+        "name": "area",
+        "query": "SELECT DISTINCT coalesce(area, '(none)') FROM plc_registry ORDER BY 1",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescale-edge"
+        },
+        "definition": "SELECT DISTINCT coalesce(r.family, m.family, '(unknown)') FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model ORDER BY 1",
+        "includeAll": true,
+        "label": "Family",
+        "multi": true,
+        "name": "family",
+        "query": "SELECT DISTINCT coalesce(r.family, m.family, '(unknown)') FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model ORDER BY 1",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescale-edge"
+        },
+        "definition": "SELECT DISTINCT coalesce(r.model, '(unknown)') FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.family, m.family, '(unknown)') IN ($family) ORDER BY 1",
+        "includeAll": true,
+        "label": "Model",
+        "multi": true,
+        "name": "model",
+        "query": "SELECT DISTINCT coalesce(r.model, '(unknown)') FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.family, m.family, '(unknown)') IN ($family) ORDER BY 1",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "PLC fleet",
+  "uid": "plc-fleet",
+  "version": 1
+}

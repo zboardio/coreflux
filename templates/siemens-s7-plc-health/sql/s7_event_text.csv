@@ -1,0 +1,559 @@
+# The S7-300/400 diagnostic-buffer event IDs and their texts, as Siemens publishes them: "System Software for S7-300/400
+# System and Standard Functions", Volume 2/2, Reference Manual 05/2010, A5E02790053-01, chapter 35 (§35.2-§35.11).
+# Siemens' published event texts, reproduced as a lookup for diagnostics, with the section and page of each row.
+# Never taken from Wireshark's packet-s7comm.c (GPL). Corrections and additions are welcome as a pull request.
+# Extracted 2026-11-03 from the PDF's text layer (pdfplumber), a sample checked against the rendered pages by eye. As printed:
+# "W#16#3921/3821" (entering/leaving) gives two rows with the one text; "W#16#8x00" is class 8/9's module form, matched
+# with mask 0xF0FF (x = bits 8-11, the ID bits, stored as 0); "W#16#Axyz" matched with 0xF000. The OB and module-type
+# columns are not kept. Where the manual lists one ID twice (§35.8 has two versions of its F-system list), the first wins.
+# Manual typos are kept as printed (W#16#3917/3827 reads like 3927; W#16#5545 and 5445 carry the same text).
+# s7_event_text.sql and the decoder's EVENT_TEXT block are generated from this file: keep the three equal.
+event_id,mask,class,text,source
+0x1381,0xFFFF,1,Request for manual warm restart,A5E02790053-01 §35.2 p.768
+0x1382,0xFFFF,1,Request for automatic warm restart,A5E02790053-01 §35.2 p.768
+0x1383,0xFFFF,1,Request for manual hot restart,A5E02790053-01 §35.2 p.768
+0x1384,0xFFFF,1,Request for automatic hot restart,A5E02790053-01 §35.2 p.768
+0x1385,0xFFFF,1,Request for manual cold restart,A5E02790053-01 §35.2 p.768
+0x1386,0xFFFF,1,Request for automatic cold restart,A5E02790053-01 §35.2 p.768
+0x1387,0xFFFF,1,Master CPU: request for manual cold restart,A5E02790053-01 §35.2 p.768
+0x1388,0xFFFF,1,Master CPU: request for automatic cold restart,A5E02790053-01 §35.2 p.768
+0x138A,0xFFFF,1,Master CPU: request for manual warm restart,A5E02790053-01 §35.2 p.768
+0x138B,0xFFFF,1,Master CPU: request for automatic warm restart,A5E02790053-01 §35.2 p.768
+0x138C,0xFFFF,1,Standby CPU: request for manual hot restart,A5E02790053-01 §35.2 p.768
+0x138D,0xFFFF,1,Standby CPU: request for automatic hot restart,A5E02790053-01 §35.2 p.768
+0x2521,0xFFFF,2,BCD conversion error,A5E02790053-01 §35.3 p.769
+0x2522,0xFFFF,2,Area length error when reading,A5E02790053-01 §35.3 p.769
+0x2523,0xFFFF,2,Area length error when writing,A5E02790053-01 §35.3 p.769
+0x2524,0xFFFF,2,Area error when reading,A5E02790053-01 §35.3 p.769
+0x2525,0xFFFF,2,Area error when writing,A5E02790053-01 §35.3 p.769
+0x2526,0xFFFF,2,Timer number error,A5E02790053-01 §35.3 p.769
+0x2527,0xFFFF,2,Counter number error,A5E02790053-01 §35.3 p.769
+0x2528,0xFFFF,2,Alignment error when reading,A5E02790053-01 §35.3 p.769
+0x2529,0xFFFF,2,Alignment error when writing,A5E02790053-01 §35.3 p.769
+0x2530,0xFFFF,2,Write error when accessing the DB,A5E02790053-01 §35.3 p.769
+0x2531,0xFFFF,2,Write error when accessing the DI,A5E02790053-01 §35.3 p.769
+0x2532,0xFFFF,2,Block number error when opening a DB,A5E02790053-01 §35.3 p.769
+0x2533,0xFFFF,2,Block number error when opening a DI,A5E02790053-01 §35.3 p.769
+0x2534,0xFFFF,2,Block number error when calling an FC,A5E02790053-01 §35.3 p.769
+0x2535,0xFFFF,2,Block number error when calling an FB,A5E02790053-01 §35.3 p.769
+0x253A,0xFFFF,2,DB not loaded,A5E02790053-01 §35.3 p.769
+0x253C,0xFFFF,2,FC not loaded,A5E02790053-01 §35.3 p.769
+0x253D,0xFFFF,2,SFC not loaded,A5E02790053-01 §35.3 p.769
+0x253E,0xFFFF,2,FB not loaded,A5E02790053-01 §35.3 p.769
+0x253F,0xFFFF,2,SFB not loaded,A5E02790053-01 §35.3 p.769
+0x2942,0xFFFF,2,"I/O access error, reading",A5E02790053-01 §35.3 p.769
+0x2943,0xFFFF,2,"I/O access error, writing",A5E02790053-01 §35.3 p.769
+0x3501,0xFFFF,3,Cycle time exceeded.,A5E02790053-01 §35.4 p.770
+0x3502,0xFFFF,3,User interface (OB or FRB) request error,A5E02790053-01 §35.4 p.770
+0x3505,0xFFFF,3,Time-of-day interrupt(s) skipped due to new clock setting,A5E02790053-01 §35.4 p.770
+0x3506,0xFFFF,3,Time-of-day interrupt(s) skipped when changing to RUN after HOLD,A5E02790053-01 §35.4 p.770
+0x3507,0xFFFF,3,Multiple OB request errors caused internal buffer overflow,A5E02790053-01 §35.4 p.770
+0x3508,0xFFFF,3,Synchronous cycle interrupt-timing error,A5E02790053-01 §35.4 p.770
+0x3509,0xFFFF,3,Interrupt loss due to excess interrupt load,A5E02790053-01 §35.4 p.770
+0x350A,0xFFFF,3,Resume RUN mode after CiR,A5E02790053-01 §35.4 p.770
+0x350B,0xFFFF,3,Technology synchronization interrupt - timing error,A5E02790053-01 §35.4 p.770
+0x3921,0xFFFF,3,BATTF: failure on at least one backup battery of the central rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3821,0xFFFF,3,BATTF: failure on at least one backup battery of the central rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3922,0xFFFF,3,BAF: failure of backup voltage on central rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3822,0xFFFF,3,BAF: failure of backup voltage on central rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3923,0xFFFF,3,24 volt supply failure on central rack / problem eliminated,A5E02790053-01 §35.4 p.770
+0x3823,0xFFFF,3,24 volt supply failure on central rack / problem eliminated,A5E02790053-01 §35.4 p.770
+0x3925,0xFFFF,3,BATTF: failure on at least one backup battery of the redundant central rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3825,0xFFFF,3,BATTF: failure on at least one backup battery of the redundant central rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3926,0xFFFF,3,BAF: failure of backup voltage on redundant central rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3826,0xFFFF,3,BAF: failure of backup voltage on redundant central rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3917,0xFFFF,3,24 volt supply failure on redundant central rack / problem eliminated,A5E02790053-01 §35.4 p.770
+0x3827,0xFFFF,3,24 volt supply failure on redundant central rack / problem eliminated,A5E02790053-01 §35.4 p.770
+0x3931,0xFFFF,3,BATTF: failure of at least one backup battery of the expansion rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3831,0xFFFF,3,BATTF: failure of at least one backup battery of the expansion rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3932,0xFFFF,3,BAF: failure of backup voltage on expansion rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3832,0xFFFF,3,BAF: failure of backup voltage on expansion rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3933,0xFFFF,3,24 volt supply failure on at least one expansion rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3833,0xFFFF,3,24 volt supply failure on at least one expansion rack/ problem eliminated,A5E02790053-01 §35.4 p.770
+0x3942,0xFFFF,3,Diagnostic interrupt (module/submodule fault or maintenance required or both),A5E02790053-01 §35.4 p.770
+0x3842,0xFFFF,3,Diagnostic interrupt (module/submodule OK),A5E02790053-01 §35.4 p.770
+0x3951,0xFFFF,3,PROFINET IO submodule removed,A5E02790053-01 §35.4 p.770
+0x3954,0xFFFF,3,PROFINET IO interface submodule/submodule removed,A5E02790053-01 §35.4 p.770
+0x3854,0xFFFF,3,PROFINET IO interface submodule/submodule and matches the configured interface submodule/submodule,A5E02790053-01 §35.4 p.770
+0x3855,0xFFFF,3,"PROFINET IO interface submodule/submodule inserted, but does not match the configured interface submodule/submodule",A5E02790053-01 §35.4 p.770
+0x3856,0xFFFF,3,"PROFINET IO interface submodule/submodule inserted, but error in module parameter assignment",A5E02790053-01 §35.4 p.770
+0x3858,0xFFFF,3,PROFINET IO interface submodule access error corrected,A5E02790053-01 §35.4 p.770
+0x3861,0xFFFF,3,"Module/interface module inserted, module type OK",A5E02790053-01 §35.4 p.771
+0x3961,0xFFFF,3,"Module/interface module removed, cannot be addressed",A5E02790053-01 §35.4 p.771
+0x3863,0xFFFF,3,"Module/interface module plugged in, but wrong module type",A5E02790053-01 §35.4 p.771
+0x3864,0xFFFF,3,"Module/interface module plugged in, but causing problem (type ID unreadable)",A5E02790053-01 §35.4 p.771
+0x3865,0xFFFF,3,"Module plugged in, but error in module parameter assignment",A5E02790053-01 §35.4 p.771
+0x3866,0xFFFF,3,"Module can be addressed again, load voltage error removed",A5E02790053-01 §35.4 p.771
+0x3966,0xFFFF,3,"Module cannot be addressed, load voltage error",A5E02790053-01 §35.4 p.771
+0x3367,0xFFFF,3,Start of module reconfiguration,A5E02790053-01 §35.4 p.771
+0x3267,0xFFFF,3,End of module reconfiguration,A5E02790053-01 §35.4 p.771
+0x3968,0xFFFF,3,Module reconfiguration has ended with error,A5E02790053-01 §35.4 p.771
+0x3571,0xFFFF,3,Nesting depth too high in nesting levels,A5E02790053-01 §35.4 p.771
+0x3572,0xFFFF,3,Nesting depth for Master Control Relays too high,A5E02790053-01 §35.4 p.771
+0x3573,0xFFFF,3,Nesting depth too high after synchronous errors,A5E02790053-01 §35.4 p.771
+0x3574,0xFFFF,3,Nesting depth for block calls (U stack) too high,A5E02790053-01 §35.4 p.771
+0x3575,0xFFFF,3,Nesting depth for block calls (B stack) too high,A5E02790053-01 §35.4 p.771
+0x3576,0xFFFF,3,Local data allocation error,A5E02790053-01 §35.4 p.771
+0x3578,0xFFFF,3,Unknown instruction,A5E02790053-01 §35.4 p.771
+0x357A,0xFFFF,3,Jump instruction to target outside of the block,A5E02790053-01 §35.4 p.771
+0x3981,0xFFFF,3,Interface error entering state,A5E02790053-01 §35.4 p.771
+0x3881,0xFFFF,3,Interface error leaving state,A5E02790053-01 §35.4 p.771
+0x3582,0xFFFF,3,Memory error detected and corrected by operating system,A5E02790053-01 §35.4 p.771
+0x3583,0xFFFF,3,Accumulation of detected and corrected memo errors,A5E02790053-01 §35.4 p.771
+0x3585,0xFFFF,3,Error in the PC operating system (only with Win AC controllers),A5E02790053-01 §35.4 p.771
+0x3986,0xFFFF,3,Performance of an H-Sync link negatively affected,A5E02790053-01 §35.4 p.771
+0x3587,0xFFFF,3,Multi-bit memory error detected and corrected,A5E02790053-01 §35.4 p.771
+0x35A1,0xFFFF,3,User interface (OB or FRB) not found,A5E02790053-01 §35.4 p.771
+0x35A2,0xFFFF,3,OB not loaded (started by SFC or operating system due to configuration),A5E02790053-01 §35.4 p.771
+0x35A3,0xFFFF,3,Error when operating system accesses a block,A5E02790053-01 §35.4 p.771
+0x35A4,0xFFFF,3,PROFINET Interface DB cannot be addressed,A5E02790053-01 §35.4 p.771
+0x34A4,0xFFFF,3,PROFINET Interface DB can be addressed again,A5E02790053-01 §35.4 p.771
+0x39B1,0xFFFF,3,I/O access error when updating the process image input table,A5E02790053-01 §35.4 p.771
+0x39B2,0xFFFF,3,I/O access error when transferring the process image to the output modules,A5E02790053-01 §35.4 p.771
+0x39B3,0xFFFF,3,I/O access error when updating the process image input table,A5E02790053-01 §35.4 p.771
+0x38B3,0xFFFF,3,I/O access error when updating the process image input table,A5E02790053-01 §35.4 p.771
+0x39B4,0xFFFF,3,I/O access error when transferring the process image to the output modules,A5E02790053-01 §35.4 p.771
+0x38B4,0xFFFF,3,I/O access error when transferring the process image to the output modules,A5E02790053-01 §35.4 p.771
+0x38C1,0xFFFF,3,"Expansion rack operational again (1 to 21), leaving state",A5E02790053-01 §35.4 p.771
+0x39C1,0xFFFF,3,"Expansion rack failure (1 to 21), entering state",A5E02790053-01 §35.4 p.771
+0x38C2,0xFFFF,3,Expansion rack operational again but mismatch between setpoint and actual configuration,A5E02790053-01 §35.4 p.771
+0x39C3,0xFFFF,3,Distributed I/Os: master system failure entering state,A5E02790053-01 §35.4 p.771
+0x39C4,0xFFFF,3,"Distributed I/Os: station failure, entering state",A5E02790053-01 §35.4 p.772
+0x38C4,0xFFFF,3,"Distributed I/Os: station failure, leaving state",A5E02790053-01 §35.4 p.772
+0x38C5,0xFFFF,3,Distributed I/Os: station return with problem,A5E02790053-01 §35.4 p.772
+0x38C6,0xFFFF,3,"Expansion rack operational again, but error(s) in module parameter assignment",A5E02790053-01 §35.4 p.772
+0x38C7,0xFFFF,3,"DP: station operational again, but error(s) in module parameter assignment",A5E02790053-01 §35.4 p.772
+0x38C8,0xFFFF,3,"DP: station operational again, but mismatch between setpoint and actual configuration",A5E02790053-01 §35.4 p.772
+0x39CA,0xFFFF,3,PROFINET IO system failure,A5E02790053-01 §35.4 p.772
+0x39CB,0xFFFF,3,PROFINET IO station failure,A5E02790053-01 §35.4 p.772
+0x38CB,0xFFFF,3,PROFINET IO station operational again,A5E02790053-01 §35.4 p.772
+0x38CC,0xFFFF,3,PROFINET IO station return with problem,A5E02790053-01 §35.4 p.772
+0x39CD,0xFFFF,3,"PROFINET IO station operational again, but expected configuration does not match actual configuration",A5E02790053-01 §35.4 p.772
+0x39CE,0xFFFF,3,"PROFINET IO station operational again, but error(s) in module parameter assignment",A5E02790053-01 §35.4 p.772
+0x35D2,0xFFFF,3,Diagnostic entries cannot be sent at present,A5E02790053-01 §35.4 p.772
+0x35D3,0xFFFF,3,Synchronization frames cannot be sent,A5E02790053-01 §35.4 p.772
+0x35D4,0xFFFF,3,Illegal time jump resulting from synchronization,A5E02790053-01 §35.4 p.772
+0x35D5,0xFFFF,3,Error adopting the synchronization time,A5E02790053-01 §35.4 p.772
+0x35E1,0xFFFF,3,Incorrect frame ID in GD,A5E02790053-01 §35.4 p.772
+0x35E2,0xFFFF,3,GD packet status cannot be entered in DB,A5E02790053-01 §35.4 p.772
+0x35E3,0xFFFF,3,Frame length error in GD,A5E02790053-01 §35.4 p.772
+0x35E4,0xFFFF,3,Illegal GD packet number received,A5E02790053-01 §35.4 p.772
+0x35E5,0xFFFF,3,Error accessing DB in communication SFBs for configured S7 connections,A5E02790053-01 §35.4 p.772
+0x35E6,0xFFFF,3,GD total status cannot be entered in DB,A5E02790053-01 §35.4 p.772
+0x4300,0xFFFF,4,Backed-up power on,A5E02790053-01 §35.5 p.773
+0x4301,0xFFFF,4,Mode transition from STOP to STARTUP,A5E02790053-01 §35.5 p.773
+0x4302,0xFFFF,4,Mode transition from STARTUP to RUN,A5E02790053-01 §35.5 p.773
+0x4303,0xFFFF,4,STOP caused by stop switch being activated,A5E02790053-01 §35.5 p.773
+0x4304,0xFFFF,4,"STOP caused by PG STOP operation or by SFB 20 ""STOP""",A5E02790053-01 §35.5 p.773
+0x4305,0xFFFF,4,HOLD: breakpoint reached,A5E02790053-01 §35.5 p.773
+0x4306,0xFFFF,4,HOLD: breakpoint exited,A5E02790053-01 §35.5 p.773
+0x4307,0xFFFF,4,Memory reset started by PG operation,A5E02790053-01 §35.5 p.773
+0x4308,0xFFFF,4,Memory reset started by switch setting,A5E02790053-01 §35.5 p.773
+0x4309,0xFFFF,4,Memory reset started automatically (power on not backed up),A5E02790053-01 §35.5 p.773
+0x430A,0xFFFF,4,"HOLD exited, transition to STOP",A5E02790053-01 §35.5 p.773
+0x430D,0xFFFF,4,STOP caused by other CPU in multicomputing,A5E02790053-01 §35.5 p.773
+0x430E,0xFFFF,4,Memory reset executed,A5E02790053-01 §35.5 p.773
+0x430F,0xFFFF,4,STOP on the module due to STOP on a CPU,A5E02790053-01 §35.5 p.773
+0x4510,0xFFFF,4,STOP violation of the CPU's data range,A5E02790053-01 §35.5 p.773
+0x4318,0xFFFF,4,Start of CiR,A5E02790053-01 §35.5 p.773
+0x4319,0xFFFF,4,CiR completed,A5E02790053-01 §35.5 p.773
+0x4520,0xFFFF,4,DEFECTIVE: STOP not possible,A5E02790053-01 §35.5 p.773
+0x4521,0xFFFF,4,DEFECTIVE: failure of instruction processing processor,A5E02790053-01 §35.5 p.773
+0x4522,0xFFFF,4,DEFECTIVE: failure of clock chip,A5E02790053-01 §35.5 p.773
+0x4523,0xFFFF,4,DEFECTIVE: failure of clock pulse generator,A5E02790053-01 §35.5 p.773
+0x4524,0xFFFF,4,DEFECTIVE: failure of timer update function,A5E02790053-01 §35.5 p.773
+0x4525,0xFFFF,4,DEFECTIVE: failure of multicomputing synchronization,A5E02790053-01 §35.5 p.773
+0x4926,0xFFFF,4,DEFECTIVE: failure of the watchdog for I/O access,A5E02790053-01 §35.5 p.773
+0x4527,0xFFFF,4,DEFECTIVE: failure of I/O access monitoring,A5E02790053-01 §35.5 p.773
+0x4528,0xFFFF,4,DEFECTIVE: failure of scan time monitoring,A5E02790053-01 §35.5 p.773
+0x4530,0xFFFF,4,DEFECTIVE: memory test error in internal memory,A5E02790053-01 §35.5 p.773
+0x4931,0xFFFF,4,STOP or DEFECTIVE: memory test error in memory submodule,A5E02790053-01 §35.5 p.773
+0x4532,0xFFFF,4,DEFECTIVE: failure of core resources,A5E02790053-01 §35.5 p.773
+0x4933,0xFFFF,4,Checksum error,A5E02790053-01 §35.5 p.773
+0x4934,0xFFFF,4,DEFECTIVE: memory not available,A5E02790053-01 §35.5 p.773
+0x4935,0xFFFF,4,DEFECTIVE: cancelled by watchdog/processor exceptions,A5E02790053-01 §35.5 p.773
+0x4536,0xFFFF,4,DEFECTIVE: switch defective,A5E02790053-01 §35.5 p.773
+0x4540,0xFFFF,4,STOP: Memory expansion of the internal work memory has gaps. First memory expansion too small or missing.,A5E02790053-01 §35.5 p.773
+0x4541,0xFFFF,4,STOP caused by priority class system,A5E02790053-01 §35.5 p.773
+0x4542,0xFFFF,4,STOP caused by object management system,A5E02790053-01 §35.5 p.773
+0x4543,0xFFFF,4,STOP caused by test functions,A5E02790053-01 §35.5 p.773
+0x4544,0xFFFF,4,STOP caused by diagnostic system,A5E02790053-01 §35.5 p.773
+0x4545,0xFFFF,4,STOP caused by communication system,A5E02790053-01 §35.5 p.774
+0x4546,0xFFFF,4,STOP caused by CPU memory management,A5E02790053-01 §35.5 p.774
+0x4547,0xFFFF,4,STOP caused by process image management,A5E02790053-01 §35.5 p.774
+0x4548,0xFFFF,4,STOP caused by I/O management,A5E02790053-01 §35.5 p.774
+0x4949,0xFFFF,4,STOP caused by continuous hardware interrupt,A5E02790053-01 §35.5 p.774
+0x454A,0xFFFF,4,STOP caused by configuration: an OB deselected with STEP 7 was being loaded into the CPU during STARTUP,A5E02790053-01 §35.5 p.774
+0x494D,0xFFFF,4,STOP caused by I/O error,A5E02790053-01 §35.5 p.774
+0x494E,0xFFFF,4,STOP caused by power failure,A5E02790053-01 §35.5 p.774
+0x494F,0xFFFF,4,STOP caused by configuration error,A5E02790053-01 §35.5 p.774
+0x4550,0xFFFF,4,DEFECTIVE: internal system error,A5E02790053-01 §35.5 p.774
+0x4555,0xFFFF,4,"No restart possible, monitoring time elapsed",A5E02790053-01 §35.5 p.774
+0x4556,0xFFFF,4,STOP: memory reset request from communication system / due to data inconsistency,A5E02790053-01 §35.5 p.774
+0x4357,0xFFFF,4,Module watchdog started,A5E02790053-01 §35.5 p.774
+0x4358,0xFFFF,4,All modules are ready for operation,A5E02790053-01 §35.5 p.774
+0x4959,0xFFFF,4,One or more modules not ready for operation,A5E02790053-01 §35.5 p.774
+0x4562,0xFFFF,4,STOP caused by programming error (OB not loaded or not possible,A5E02790053-01 §35.5 p.774
+0x4563,0xFFFF,4,STOP caused by I/O access error (OB not loaded or not possible,A5E02790053-01 §35.5 p.774
+0x4567,0xFFFF,4,STOP caused by H event,A5E02790053-01 §35.5 p.774
+0x4568,0xFFFF,4,STOP caused by time error (OB not loaded or not possible),A5E02790053-01 §35.5 p.774
+0x456A,0xFFFF,4,STOP caused by diagnostic interrupt (OB not loaded or not possible),A5E02790053-01 §35.5 p.774
+0x456B,0xFFFF,4,STOP caused by removing/inserting module (OB not loaded or not possible),A5E02790053-01 §35.5 p.774
+0x456C,0xFFFF,4,"STOP caused by CPU hardware error (OB not loaded or not possible, or no FRB)STOP",A5E02790053-01 §35.5 p.774
+0x456D,0xFFFF,4,STOP caused by program sequence error (OB not loaded or not possible),A5E02790053-01 §35.5 p.774
+0x456E,0xFFFF,4,STOP caused by communication error (OB not loaded or not possible),A5E02790053-01 §35.5 p.774
+0x456F,0xFFFF,4,STOP caused by rack failure OB (OB not loaded or not possible),A5E02790053-01 §35.5 p.774
+0x4570,0xFFFF,4,STOP caused by process interrupt (OB not loaded or not possible),A5E02790053-01 §35.5 p.774
+0x4571,0xFFFF,4,STOP caused by nesting stack error,A5E02790053-01 §35.5 p.774
+0x4572,0xFFFF,4,STOP caused by master control relay stack error,A5E02790053-01 §35.5 p.774
+0x4573,0xFFFF,4,STOP caused by exceeding the nesting depth for synchronous errors,A5E02790053-01 §35.5 p.774
+0x4574,0xFFFF,4,STOP caused by exceeding interrupt stack nesting depth in the priority class stack,A5E02790053-01 §35.5 p.774
+0x4575,0xFFFF,4,STOP caused by exceeding block stack nesting depth in the priority class stack,A5E02790053-01 §35.5 p.774
+0x4576,0xFFFF,4,STOP caused by error when allocating the local data,A5E02790053-01 §35.5 p.774
+0x4578,0xFFFF,4,STOP caused by unknown opcode,A5E02790053-01 §35.5 p.774
+0x457A,0xFFFF,4,STOP caused by code length error,A5E02790053-01 §35.5 p.774
+0x457B,0xFFFF,4,STOP caused by DB not being loaded on on-board I/Os,A5E02790053-01 §35.5 p.774
+0x497C,0xFFFF,4,STOP caused by integrated technology,A5E02790053-01 §35.5 p.774
+0x457D,0xFFFF,4,Reset/clear request because the version of the internal interface to the integrated technology was changed.,A5E02790053-01 §35.5 p.775
+0x457F,0xFFFF,4,STOP caused by STOP command,A5E02790053-01 §35.5 p.775
+0x4580,0xFFFF,4,STOP: back-up buffer contents inconsistent (no transition to RUN),A5E02790053-01 §35.5 p.775
+0x4590,0xFFFF,4,STOP caused by overloading the internal functions,A5E02790053-01 §35.5 p.775
+0x49A0,0xFFFF,4,STOP caused by parameter assignment error or non-permissible variation of setpoint and actual extension: Start-up blocked.,A5E02790053-01 §35.5 p.775
+0x49A1,0xFFFF,4,STOP caused by parameter assignment error: memory reset request,A5E02790053-01 §35.5 p.775
+0x49A2,0xFFFF,4,STOP caused by error in parameter modification: startup disabled,A5E02790053-01 §35.5 p.775
+0x49A3,0xFFFF,4,STOP caused by error in parameter modification: memory reset request,A5E02790053-01 §35.5 p.775
+0x49A4,0xFFFF,4,STOP: inconsistency in configuration data,A5E02790053-01 §35.5 p.775
+0x49A5,0xFFFF,4,STOP: distributed I/Os: inconsistency in the loaded configuration information,A5E02790053-01 §35.5 p.775
+0x49A6,0xFFFF,4,STOP: distributed I/Os: invalid configuration information,A5E02790053-01 §35.5 p.775
+0x49A7,0xFFFF,4,STOP: distributed I/Os: no configuration information,A5E02790053-01 §35.5 p.775
+0x49A8,0xFFFF,4,STOP: error indicated by the interface module for the distributed I/Os,A5E02790053-01 §35.5 p.775
+0x43B0,0xFFFF,4,Firmware update / backup was successful,A5E02790053-01 §35.5 p.775
+0x49B1,0xFFFF,4,Firmware update data incorrect,A5E02790053-01 §35.5 p.775
+0x49B2,0xFFFF,4,Firmware update: hardware version does not match firmware,A5E02790053-01 §35.5 p.775
+0x49B3,0xFFFF,4,Firmware update: module type does not match firmware,A5E02790053-01 §35.5 p.775
+0x43B4,0xFFFF,4,Error in firmware fuse,A5E02790053-01 §35.5 p.775
+0x43B6,0xFFFF,4,Firmware updates canceled by redundant modules,A5E02790053-01 §35.5 p.775
+0x49D0,0xFFFF,4,LINK-UP aborted due to violation of coordination rules,A5E02790053-01 §35.5 p.775
+0x49D1,0xFFFF,4,LINK-UP/UPDATE sequence aborted,A5E02790053-01 §35.5 p.775
+0x49D2,0xFFFF,4,Standby CPU changed to STOP due to STOP on the master CPU during link-up,A5E02790053-01 §35.5 p.775
+0x43D3,0xFFFF,4,STOP on standby CPU,A5E02790053-01 §35.5 p.775
+0x49D4,0xFFFF,4,"STOP on a master, since partner CPU is also a master (link-up error)",A5E02790053-01 §35.5 p.775
+0x45D5,0xFFFF,4,LINK-UP rejected due to mismatched CPU memory configuration of the sub-PLC,A5E02790053-01 §35.5 p.775
+0x45D6,0xFFFF,4,LINK-UP rejected due to mismatched system program of the sub-PLC,A5E02790053-01 §35.5 p.775
+0x49D7,0xFFFF,4,LINK-UP rejected due to change in user program or in configuration,A5E02790053-01 §35.5 p.775
+0x45D8,0xFFFF,4,DEFECTIVE: hardware fault detected due to other error,A5E02790053-01 §35.5 p.775
+0x45D9,0xFFFF,4,STOP due to SYNC module error,A5E02790053-01 §35.5 p.775
+0x45DA,0xFFFF,4,STOP due to synchronization error between H CPUs,A5E02790053-01 §35.5 p.775
+0x43DC,0xFFFF,4,Abort during link-up with switchover,A5E02790053-01 §35.5 p.775
+0x45DD,0xFFFF,4,LINK-UP rejected due to running test or other online functions,A5E02790053-01 §35.5 p.775
+0x43DE,0xFFFF,4,"Updating aborted due to monitoring time being exceeded during the n-th attempt, new update attempt initiated",A5E02790053-01 §35.5 p.775
+0x43DF,0xFFFF,4,Updating aborted for final time due to monitoring time being exceeded after completing the maximum amount of attempts. User intervention required.,A5E02790053-01 §35.5 p.775
+0x43E0,0xFFFF,4,Change from solo mode after link-up,A5E02790053-01 §35.5 p.775
+0x43E1,0xFFFF,4,Change from link-up after updating,A5E02790053-01 §35.5 p.775
+0x43E2,0xFFFF,4,Change from updating to redundant mode,A5E02790053-01 §35.5 p.775
+0x43E3,0xFFFF,4,Master CPU: change from redundant mode to solo mode,A5E02790053-01 §35.5 p.776
+0x43E4,0xFFFF,4,Standby CPU: change from redundant mode after error-search mode,A5E02790053-01 §35.5 p.776
+0x43E5,0xFFFF,4,Standby CPU: change from error-search mode after link-up or STOP,A5E02790053-01 §35.5 p.776
+0x43E6,0xFFFF,4,Link-up aborted on the standby CPU,A5E02790053-01 §35.5 p.776
+0x43E7,0xFFFF,4,Updating aborted on the standby CPU,A5E02790053-01 §35.5 p.776
+0x43E8,0xFFFF,4,Standby CPU: change from link-up after startup,A5E02790053-01 §35.5 p.776
+0x43E9,0xFFFF,4,Standby CPU: change from startup after updating,A5E02790053-01 §35.5 p.776
+0x43F1,0xFFFF,4,Reserve-master switchover,A5E02790053-01 §35.5 p.776
+0x43F2,0xFFFF,4,Coupling of incompatible H-CPUs blocked by system program,A5E02790053-01 §35.5 p.776
+0x42F3,0xFFFF,4,Checksum error detected and corrected by the operating system,A5E02790053-01 §35.5 p.776
+0x42F4,0xFFFF,4,Standby CPU: connection/update via SFC90 is locked in the master CPU,A5E02790053-01 §35.5 p.776
+0x530D,0xFFFF,5,New startup information in the STOP mode,A5E02790053-01 §35.6 p.777
+0x510F,0xFFFF,5,A problem as occurred with WinLC. This problem has caused the CPU to go into STOP mode or has caused a fault in the CPU.,A5E02790053-01 §35.6 p.777
+0x5311,0xFFFF,5,Startup despite Not Ready message from module(s),A5E02790053-01 §35.6 p.777
+0x5545,0xFFFF,5,Start of System reconfiguration in RUN mode,A5E02790053-01 §35.6 p.777
+0x5445,0xFFFF,5,Start of System reconfiguration in RUN mode,A5E02790053-01 §35.6 p.777
+0x5380,0xFFFF,5,Diagnostic buffer entries of interrupt and asynchronous errors disabled,A5E02790053-01 §35.6 p.777
+0x5395,0xFFFF,5,Distributed I/Os: reset of a DP master,A5E02790053-01 §35.6 p.777
+0x5481,0xFFFF,5,All licenses for runtime software are complete again.,A5E02790053-01 §35.6 p.777
+0x5498,0xFFFF,5,No more inconsistency with DP master systems due to CiR,A5E02790053-01 §35.6 p.777
+0x5581,0xFFFF,5,One or several licenses for runtime software are missing.,A5E02790053-01 §35.6 p.777
+0x558A,0xFFFF,5,Difference between the MLFB of the configured and inserted CPU,A5E02790053-01 §35.6 p.777
+0x558B,0xFFFF,5,Difference in the firmware version of the configured and inserted CPU,A5E02790053-01 §35.6 p.777
+0x5598,0xFFFF,5,Start of possible inconsistency with DP master systems due to CiR,A5E02790053-01 §35.6 p.777
+0x5960,0xFFFF,5,Parameter assignment error when switching,A5E02790053-01 §35.6 p.777
+0x5961,0xFFFF,5,Parameter assignment error,A5E02790053-01 §35.6 p.777
+0x5962,0xFFFF,5,Parameter assignment error preventing startup,A5E02790053-01 §35.6 p.777
+0x5963,0xFFFF,5,Parameter assignment error with memory reset request,A5E02790053-01 §35.6 p.777
+0x5966,0xFFFF,5,Parameter assignment error when switching,A5E02790053-01 §35.6 p.777
+0x5967,0xFFFF,5,Parameter assignment error: unknown configuration data,A5E02790053-01 §35.6 p.777
+0x5968,0xFFFF,5,Emergency address of an Ethernet interface enabled/disabled,A5E02790053-01 §35.6 p.777
+0x5858,0xFFFF,5,Emergency address of an Ethernet interface enabled/disabled,A5E02790053-01 §35.6 p.777
+0x5969,0xFFFF,5,Parameter assignment error with startup blocked,A5E02790053-01 §35.6 p.777
+0x596A,0xFFFF,5,PROFINET IO: IP address of an IO device already present,A5E02790053-01 §35.6 p.777
+0x596B,0xFFFF,5,IP address of an Ethernet interface already exists,A5E02790053-01 §35.6 p.777
+0x596C,0xFFFF,5,Name of an Ethernet interface already exists,A5E02790053-01 §35.6 p.777
+0x596D,0xFFFF,5,The existing network configuration does not mach the system requirements or configuration.,A5E02790053-01 §35.6 p.777
+0x5371,0xFFFF,5,Distributed I/Os: end of the synchronization with a DP master,A5E02790053-01 §35.6 p.777
+0x5979,0xFFFF,5,Diagnostic message from DP interface: EXTF LED on/off,A5E02790053-01 §35.6 p.777
+0x5879,0xFFFF,5,Diagnostic message from DP interface: EXTF LED on/off,A5E02790053-01 §35.6 p.777
+0x597C,0xFFFF,5,DP Global Control command failed or moved,A5E02790053-01 §35.6 p.777
+0x59A0,0xFFFF,5,The interrupt can not be associated in the CPU,A5E02790053-01 §35.6 p.777
+0x59A1,0xFFFF,5,Configuration error in the integrated technology,A5E02790053-01 §35.6 p.777
+0x53A2,0xFFFF,5,Download of technology firmware successful,A5E02790053-01 §35.6 p.777
+0x59A3,0xFFFF,5,Error when downloading the integrated technology,A5E02790053-01 §35.6 p.777
+0x53A4,0xFFFF,5,Download of technology DB not successful,A5E02790053-01 §35.6 p.777
+0x55A5,0xFFFF,5,Version conflict: internal interface with integrated technology,A5E02790053-01 §35.6 p.777
+0x55A6,0xFFFF,5,The maximum number of technology objects has been exceeded.,A5E02790053-01 §35.6 p.777
+0x55A7,0xFFFF,5,A technology DB of this type is already present.,A5E02790053-01 §35.6 p.777
+0x53FF,0xFFFF,5,Reset to factory setting,A5E02790053-01 §35.6 p.777
+0x6316,0xFFFF,6,Interface error when starting programmable controller,A5E02790053-01 §35.7 p.778
+0x6390,0xFFFF,6,Formatting of Micro Memory Card complete,A5E02790053-01 §35.7 p.778
+0x6500,0xFFFF,6,Connection ID exists twice on module,A5E02790053-01 §35.7 p.778
+0x6501,0xFFFF,6,Connection resources inadequate,A5E02790053-01 §35.7 p.778
+0x6502,0xFFFF,6,Error in the connection description,A5E02790053-01 §35.7 p.778
+0x6510,0xFFFF,6,CFB structure error detected in instance DB when evaluating EPROM,A5E02790053-01 §35.7 p.778
+0x6514,0xFFFF,6,GD packet number exists twice on the module,A5E02790053-01 §35.7 p.778
+0x6515,0xFFFF,6,Inconsistent length specifications in GD configuration information,A5E02790053-01 §35.7 p.778
+0x6521,0xFFFF,6,No memory submodule and no internal memory available,A5E02790053-01 §35.7 p.778
+0x6522,0xFFFF,6,Illegal memory submodule: replace submodule and reset memory,A5E02790053-01 §35.7 p.778
+0x6523,0xFFFF,6,Memory reset request due to error accessing submodule,A5E02790053-01 §35.7 p.778
+0x6524,0xFFFF,6,Memory reset request due to error in block header,A5E02790053-01 §35.7 p.778
+0x6526,0xFFFF,6,Memory reset request due to memory replacement,A5E02790053-01 §35.7 p.778
+0x6527,0xFFFF,6,"Memory replaced, therefore restart not possible",A5E02790053-01 §35.7 p.778
+0x6528,0xFFFF,6,"Object handling function in the STOP/HOLD mode, no restart possible",A5E02790053-01 §35.7 p.778
+0x6529,0xFFFF,6,"No startup possible during the ""load user program"" function",A5E02790053-01 §35.7 p.778
+0x652A,0xFFFF,6,No startup because block exists twice in user memory,A5E02790053-01 §35.7 p.778
+0x652B,0xFFFF,6,No startup because block is too long for submodule - replace submodule,A5E02790053-01 §35.7 p.778
+0x652C,0xFFFF,6,No startup due to illegal OB on submodule,A5E02790053-01 §35.7 p.778
+0x6532,0xFFFF,6,No startup because illegal configuration information on submodule,A5E02790053-01 §35.7 p.778
+0x6533,0xFFFF,6,Memory reset request because of invalid submodule content,A5E02790053-01 §35.7 p.778
+0x6534,0xFFFF,6,No startup: block exists more than once on submodule,A5E02790053-01 §35.7 p.778
+0x6535,0xFFFF,6,No startup: not enough memory to transfer block from submodule,A5E02790053-01 §35.7 p.778
+0x6536,0xFFFF,6,No startup: submodule contains an illegal block number,A5E02790053-01 §35.7 p.778
+0x6537,0xFFFF,6,No startup: submodule contains a block with an illegal length,A5E02790053-01 §35.7 p.778
+0x6538,0xFFFF,6,Local data or write-protection ID (for DB) of a block illegal for CPU,A5E02790053-01 §35.7 p.778
+0x6539,0xFFFF,6,Illegal command in block (detected by compiler),A5E02790053-01 §35.7 p.778
+0x653A,0xFFFF,6,Memory reset request because local OB data on submodule too short,A5E02790053-01 §35.7 p.778
+0x6543,0xFFFF,6,No startup: illegal block type,A5E02790053-01 §35.7 p.778
+0x6544,0xFFFF,6,"No startup: attribute ""relevant for processing"" illegal",A5E02790053-01 §35.7 p.778
+0x6545,0xFFFF,6,Source language illegal,A5E02790053-01 §35.7 p.778
+0x6546,0xFFFF,6,Maximum number of blocks of one block type reached,A5E02790053-01 §35.7 p.778
+0x6547,0xFFFF,6,"Parameter assignment error assigning parameters to modules (not on P bus, cancel download)",A5E02790053-01 §35.7 p.778
+0x6548,0xFFFF,6,Plausibility error during block check,A5E02790053-01 §35.7 p.778
+0x6549,0xFFFF,6,Structure error in block,A5E02790053-01 §35.7 p.778
+0x6550,0xFFFF,6,A block has an error in the CRC,A5E02790053-01 §35.7 p.778
+0x6551,0xFFFF,6,A block has no CRC,A5E02790053-01 §35.7 p.778
+0x6353,0xFFFF,6,Firmware update: Start of firmware download over the network,A5E02790053-01 §35.7 p.778
+0x6253,0xFFFF,6,Firmware update: End of firmware download over the network,A5E02790053-01 §35.7 p.779
+0x6560,0xFFFF,6,SCAN overflow,A5E02790053-01 §35.7 p.779
+0x6881,0xFFFF,6,Interface error leaving state,A5E02790053-01 §35.7 p.779
+0x6905,0xFFFF,6,Resource problem on configured connections/eliminated,A5E02790053-01 §35.7 p.779
+0x6805,0xFFFF,6,Resource problem on configured connections/eliminated,A5E02790053-01 §35.7 p.779
+0x6981,0xFFFF,6,Interface error entering state,A5E02790053-01 §35.7 p.779
+0x72A2,0xFFFF,7,Failure of a DP master or a DP master system,A5E02790053-01 §35.8 p.780
+0x72A3,0xFFFF,7,Redundancy restored on the DP slave,A5E02790053-01 §35.8 p.780
+0x7301,0xFFFF,7,Loss of redundancy (1 of 2) due to failure of a CPU,A5E02790053-01 §35.8 p.780
+0x7302,0xFFFF,7,Loss of redundancy (1 of 2) due to STOP on the standby triggered by user,A5E02790053-01 §35.8 p.780
+0x7303,0xFFFF,7,H system (1 of 2) changed to redundant mode,A5E02790053-01 §35.8 p.780
+0x7323,0xFFFF,7,Discrepancy found in operating system data,A5E02790053-01 §35.8 p.780
+0x7331,0xFFFF,7,Standby-master switchover due to master failure,A5E02790053-01 §35.8 p.780
+0x7333,0xFFFF,7,Standby-master switchover due to system modification during runtime,A5E02790053-01 §35.8 p.780
+0x7334,0xFFFF,7,Standby-master switchover due to communication error at the synchronization module,A5E02790053-01 §35.8 p.780
+0x7340,0xFFFF,7,Synchronization error in user program due to elapsed wait time,A5E02790053-01 §35.8 p.780
+0x7341,0xFFFF,7,Synchronization error in user program due to waiting at different synchronization points,A5E02790053-01 §35.8 p.780
+0x7342,0xFFFF,7,Synchronization error in operating system due to waiting at different synchronization points,A5E02790053-01 §35.8 p.780
+0x7343,0xFFFF,7,Synchronization error in operating system due to elapsed wait time,A5E02790053-01 §35.8 p.780
+0x7344,0xFFFF,7,Synchronization error in operating system due to incorrect data,A5E02790053-01 §35.8 p.780
+0x734A,0xFFFF,7,"The ""Re-enable"" job triggered by SFC 90 ""H_CTRL"" was executed.",A5E02790053-01 §35.8 p.780
+0x73A3,0xFFFF,7,Loss of redundancy on the DP slave,A5E02790053-01 §35.8 p.780
+0x73D8,0xFFFF,7,Safety mode disabled,A5E02790053-01 §35.8 p.780
+0x73E0,0xFFFF,7,Loss of redundancy in communication/ problem eliminated,A5E02790053-01 §35.8 p.780
+0x72E0,0xFFFF,7,Loss of redundancy in communication/ problem eliminated,A5E02790053-01 §35.8 p.780
+0x7520,0xFFFF,7,Error in RAM comparison,A5E02790053-01 §35.8 p.780
+0x7521,0xFFFF,7,Error in comparison of process image output value,A5E02790053-01 §35.8 p.780
+0x7522,0xFFFF,7,"Error in comparison of memory bits, timers, or counters",A5E02790053-01 §35.8 p.780
+0x73C1,0xFFFF,7,Update process canceled,A5E02790053-01 §35.8 p.780
+0x73C2,0xFFFF,7,Updating aborted due to monitoring time being exceeded during the n-th attempt (1 ≤ n ≤ max. possible number of update attempts after abort due to excessive monitoring time),A5E02790053-01 §35.8 p.780
+0x75D1,0xFFFF,7,Safety program: Internal CPU error,A5E02790053-01 §35.8 p.780
+0x75D2,0xFFFF,7,Safety program error: Cycle time time-out,A5E02790053-01 §35.8 p.780
+0x75D6,0xFFFF,7,Data corrupted in safety program prior to the output to F I/O,A5E02790053-01 §35.8 p.780
+0x75D7,0xFFFF,7,Data corrupted in safety program prior to the output to partner F CPU,A5E02790053-01 §35.8 p.780
+0x75D9,0xFFFF,7,Invalid REAL number in a DB,A5E02790053-01 §35.8 p.780
+0x75DA,0xFFFF,7,Safety program: Error in safety data format,A5E02790053-01 §35.8 p.780
+0x73DB,0xFFFF,7,Safety program: safety mode enabled/disabled,A5E02790053-01 §35.8 p.780
+0x72DB,0xFFFF,7,Safety program: safety mode enabled/disabled,A5E02790053-01 §35.8 p.780
+0x75DC,0xFFFF,7,"Runtime group, internal protocol error",A5E02790053-01 §35.8 p.780
+0x75DD,0xFFFF,7,Safety program: Shutdown of a fail-save runtime group enabled/disabled,A5E02790053-01 §35.8 p.780
+0x74DD,0xFFFF,7,Safety program: Shutdown of a fail-save runtime group enabled/disabled,A5E02790053-01 §35.8 p.780
+0x75DE,0xFFFF,7,Safety program: Shutdown of the F program enabled/disabled,A5E02790053-01 §35.8 p.781
+0x74DE,0xFFFF,7,Safety program: Shutdown of the F program enabled/disabled,A5E02790053-01 §35.8 p.781
+0x75DF,0xFFFF,7,Start / end of F program initialization,A5E02790053-01 §35.8 p.781
+0x74DF,0xFFFF,7,Start / end of F program initialization,A5E02790053-01 §35.8 p.781
+0x75E1,0xFFFF,7,"Safety program: Error in FB ""F_PLK"" or ""F_PLK_O"" or F_CYC_CO"" or ""F_TEST"" or ""F_TESTC""",A5E02790053-01 §35.8 p.781
+0x7934,0xFFFF,7,Standby-master switchover due to connection problem at the SYNC module,A5E02790053-01 §35.8 p.781
+0x7950,0xFFFF,7,Synchronization module missing,A5E02790053-01 §35.8 p.781
+0x7951,0xFFFF,7,Change at the SYNC module without Power On,A5E02790053-01 §35.8 p.781
+0x7952,0xFFFF,7,SYNC module removed/inserted,A5E02790053-01 §35.8 p.781
+0x7852,0xFFFF,7,SYNC module removed/inserted,A5E02790053-01 §35.8 p.781
+0x7953,0xFFFF,7,Change at the SYNC-module without reset,A5E02790053-01 §35.8 p.781
+0x7954,0xFFFF,7,SYNC module: rack number assigned twice,A5E02790053-01 §35.8 p.781
+0x7955,0xFFFF,7,SYNC module error/eliminated,A5E02790053-01 §35.8 p.781
+0x7855,0xFFFF,7,SYNC module error/eliminated,A5E02790053-01 §35.8 p.781
+0x7956,0xFFFF,7,Illegal rack number set on SYNC module,A5E02790053-01 §35.8 p.781
+0x7960,0xFFFF,7,"Redundant I/O: Time-out of discrepancy time at digital input, error is not yet localized",A5E02790053-01 §35.8 p.781
+0x7961,0xFFFF,7,"Redundant I/O, digital input error: Signal change after expiration of the discrepancy time",A5E02790053-01 §35.8 p.781
+0x7962,0xFFFF,7,Redundant I/O: Digital input error,A5E02790053-01 §35.8 p.781
+0x7963,0xFFFF,7,Redundant I/O: Digital input channel error,A5E02790053-01 §35.8 p.781
+0x7964,0xFFFF,7,Redundant I/O: Digital input error: Signal change after discrepancy time elapsed,A5E02790053-01 §35.8 p.781
+0x796F,0xFFFF,7,Redundant I/O: The I/O was globally depassivated,A5E02790053-01 §35.8 p.781
+0x7970,0xFFFF,7,Redundant I/O: Digital output error,A5E02790053-01 §35.8 p.781
+0x7971,0xFFFF,7,Redundant I/O: Digital output channel error,A5E02790053-01 §35.8 p.781
+0x7980,0xFFFF,7,Redundant I/O: Time-out of discrepancy time at analog input,A5E02790053-01 §35.8 p.781
+0x7981,0xFFFF,7,Redundant I/O: Analog input error,A5E02790053-01 §35.8 p.781
+0x7982,0xFFFF,7,Redundant I/O: Analog input channel error,A5E02790053-01 §35.8 p.781
+0x7983,0xFFFF,7,Redundant I/O: Discrepancy time for analog input channel elapsed,A5E02790053-01 §35.8 p.781
+0x7984,0xFFFF,7,Redundant I/O: Analog input channel error,A5E02790053-01 §35.8 p.781
+0x7990,0xFFFF,7,Redundant I/O: Analog output error,A5E02790053-01 §35.8 p.781
+0x7991,0xFFFF,7,Redundant I/O: Analog output channel error,A5E02790053-01 §35.8 p.781
+0x73A2,0xFFFF,7,Failure of a DP master or a DP master system,A5E02790053-01 §35.8 p.781
+0x79D3,0xFFFF,7,Communication error between PROFIsafe and F I/O,A5E02790053-01 §35.8 p.781
+0x78D3,0xFFFF,7,Communication error between PROFIsafe and F I/O,A5E02790053-01 §35.8 p.781
+0x79D4,0xFFFF,7,Error in safety relevant communication between F CPUs,A5E02790053-01 §35.8 p.781
+0x78D4,0xFFFF,7,Error in safety relevant communication between F CPUs,A5E02790053-01 §35.8 p.781
+0x79D5,0xFFFF,7,Error in safety relevant communication between F CPUs,A5E02790053-01 §35.8 p.781
+0x78D5,0xFFFF,7,Error in safety relevant communication between F CPUs,A5E02790053-01 §35.8 p.781
+0x75E2,0xFFFF,7,Safety program: Area length error,A5E02790053-01 §35.8 p.782
+0x79E3,0xFFFF,7,F-I/O device input channel passivated,A5E02790053-01 §35.8 p.782
+0x78E3,0xFFFF,7,F-I/O device input channel depassivated,A5E02790053-01 §35.8 p.782
+0x79E4,0xFFFF,7,F-I/O device output channel passivated,A5E02790053-01 §35.8 p.782
+0x78E4,0xFFFF,7,F-I/O device output channel depassivated,A5E02790053-01 §35.8 p.782
+0x79E5,0xFFFF,7,F-I/O device passivated,A5E02790053-01 §35.8 p.782
+0x78E5,0xFFFF,7,F-I/O device depassivated,A5E02790053-01 §35.8 p.782
+0x79E6,0xFFFF,7,Inconsistent safety program,A5E02790053-01 §35.8 p.782
+0x79E7,0xFFFF,7,Simulation block (F system block) loaded,A5E02790053-01 §35.8 p.782
+0x73E8,0xFFFF,7,Consistency of the safety program verified by testing,A5E02790053-01 §35.8 p.782
+0x73E9,0xFFFF,7,Consistency of the safety program cannot be checked,A5E02790053-01 §35.8 p.782
+0x8000,0xF0FF,8,Module fault/OK,A5E02790053-01 §35.9 p.783
+0x8001,0xF0FF,8,Internal error,A5E02790053-01 §35.9 p.783
+0x8002,0xF0FF,8,External error,A5E02790053-01 §35.9 p.783
+0x8003,0xF0FF,8,Channel error,A5E02790053-01 §35.9 p.783
+0x8004,0xF0FF,8,No external auxiliary voltage,A5E02790053-01 §35.9 p.783
+0x8005,0xF0FF,8,No front connector,A5E02790053-01 §35.9 p.783
+0x8006,0xF0FF,8,No parameter assignment,A5E02790053-01 §35.9 p.783
+0x8007,0xF0FF,8,Incorrect parameters in module,A5E02790053-01 §35.9 p.783
+0x8030,0xF0FF,8,User submodule incorrect/not found,A5E02790053-01 §35.9 p.783
+0x8031,0xF0FF,8,Communication problem,A5E02790053-01 §35.9 p.783
+0x8032,0xF0FF,8,"Operating mode: RUN/STOP (STOP: entering state, RUN: leaving state)",A5E02790053-01 §35.9 p.783
+0x8033,0xF0FF,8,Time monitoring responded (watchdog),A5E02790053-01 §35.9 p.783
+0x8034,0xF0FF,8,Internal module power failure,A5E02790053-01 §35.9 p.783
+0x8035,0xF0FF,8,BATTF: battery exhausted,A5E02790053-01 §35.9 p.783
+0x8036,0xF0FF,8,Total backup failed,A5E02790053-01 §35.9 p.783
+0x8040,0xF0FF,8,Expansion rack failed,A5E02790053-01 §35.9 p.783
+0x8041,0xF0FF,8,Processor failure,A5E02790053-01 §35.9 p.783
+0x8042,0xF0FF,8,EPROM error,A5E02790053-01 §35.9 p.783
+0x8043,0xF0FF,8,RAM error,A5E02790053-01 §35.9 p.783
+0x8044,0xF0FF,8,ADC/DAC error,A5E02790053-01 §35.9 p.783
+0x8045,0xF0FF,8,Fuse blown,A5E02790053-01 §35.9 p.783
+0x8046,0xF0FF,8,Hardware interrupt lost,A5E02790053-01 §35.9 p.783
+0x8050,0xF0FF,8,Configuration/parameter assignment error,A5E02790053-01 §35.9 p.783
+0x8051,0xF0FF,8,Common mode error,A5E02790053-01 §35.9 p.783
+0x8052,0xF0FF,8,Short circuit to phase,A5E02790053-01 §35.9 p.783
+0x8053,0xF0FF,8,Short circuit to ground,A5E02790053-01 §35.9 p.783
+0x8054,0xF0FF,8,Wire break,A5E02790053-01 §35.9 p.783
+0x8055,0xF0FF,8,Reference channel error,A5E02790053-01 §35.9 p.783
+0x8056,0xF0FF,8,Below measuring range,A5E02790053-01 §35.9 p.783
+0x8057,0xF0FF,8,Above measuring range,A5E02790053-01 §35.9 p.783
+0x8060,0xF0FF,8,Configuration/parameter assignment error,A5E02790053-01 §35.9 p.783
+0x8061,0xF0FF,8,Common mode error,A5E02790053-01 §35.9 p.783
+0x8062,0xF0FF,8,Short circuit to phase,A5E02790053-01 §35.9 p.783
+0x8063,0xF0FF,8,Short circuit to ground,A5E02790053-01 §35.9 p.783
+0x8064,0xF0FF,8,Wire break,A5E02790053-01 §35.9 p.783
+0x8066,0xF0FF,8,No load voltage,A5E02790053-01 §35.9 p.783
+0x8070,0xF0FF,8,Configuration/parameter assignment error,A5E02790053-01 §35.9 p.783
+0x8071,0xF0FF,8,Chassis ground fault,A5E02790053-01 §35.9 p.783
+0x8072,0xF0FF,8,Short circuit to phase (sensor),A5E02790053-01 §35.9 p.784
+0x8073,0xF0FF,8,Short circuit to ground (sensor),A5E02790053-01 §35.9 p.784
+0x8074,0xF0FF,8,Wire break,A5E02790053-01 §35.9 p.784
+0x8075,0xF0FF,8,No sensor power supply,A5E02790053-01 §35.9 p.784
+0x8080,0xF0FF,8,Configuration/parameter assignment error,A5E02790053-01 §35.9 p.784
+0x8081,0xF0FF,8,Chassis ground fault,A5E02790053-01 §35.9 p.784
+0x8082,0xF0FF,8,Short circuit to phase,A5E02790053-01 §35.9 p.784
+0x8083,0xF0FF,8,Short circuit to ground,A5E02790053-01 §35.9 p.784
+0x8084,0xF0FF,8,Wire break,A5E02790053-01 §35.9 p.784
+0x8085,0xF0FF,8,Fuse tripped,A5E02790053-01 §35.9 p.784
+0x8086,0xF0FF,8,No load voltage,A5E02790053-01 §35.9 p.784
+0x8087,0xF0FF,8,Excess temperature,A5E02790053-01 §35.9 p.784
+0x80B0,0xF0FF,8,"Counter module, signal A faulty",A5E02790053-01 §35.9 p.784
+0x80B1,0xF0FF,8,"Counter module, signal B faulty",A5E02790053-01 §35.9 p.784
+0x80B2,0xF0FF,8,"Counter module, signal N faulty",A5E02790053-01 §35.9 p.784
+0x80B3,0xF0FF,8,"Counter module, incorrect value passed between the channels",A5E02790053-01 §35.9 p.784
+0x80B4,0xF0FF,8,"Counter module, 5.2 V sensor supply faulty",A5E02790053-01 §35.9 p.784
+0x80B5,0xF0FF,8,"Counter module, 24 V sensor supply faulty",A5E02790053-01 §35.9 p.784
+0x9001,0xFFFF,9,Automatic mode,A5E02790053-01 §35.10 p.785
+0x9101,0xFFFF,9,Manual mode,A5E02790053-01 §35.10 p.785
+0x9002,0xF0FF,9,"OPEN/CLOSED, ON/OFF",A5E02790053-01 §35.10 p.785
+0x9003,0xF0FF,9,Manual command enable,A5E02790053-01 §35.10 p.785
+0x9004,0xF0FF,9,Unit protective command (OPEN/CLOSED),A5E02790053-01 §35.10 p.785
+0x9005,0xF0FF,9,Process enable,A5E02790053-01 §35.10 p.785
+0x9006,0xF0FF,9,System protection command,A5E02790053-01 §35.10 p.785
+0x9007,0xF0FF,9,Process value monitoring responded,A5E02790053-01 §35.10 p.785
+0x9008,0xF0FF,9,Manipulated variable monitoring responded,A5E02790053-01 §35.10 p.785
+0x9009,0xF0FF,9,System deviation greater than permitted,A5E02790053-01 §35.10 p.785
+0x900A,0xF0FF,9,Limit position error,A5E02790053-01 §35.10 p.785
+0x900B,0xF0FF,9,Runtime error,A5E02790053-01 §35.10 p.785
+0x900C,0xF0FF,9,Command execution error (sequencer),A5E02790053-01 §35.10 p.785
+0x900D,0xF0FF,9,Operating status running > OPEN,A5E02790053-01 §35.10 p.785
+0x900E,0xF0FF,9,Operating status running > CLOSED,A5E02790053-01 §35.10 p.785
+0x900F,0xF0FF,9,Command blocking,A5E02790053-01 §35.10 p.785
+0x9011,0xF0FF,9,Process status OPEN/ON,A5E02790053-01 §35.10 p.785
+0x9012,0xF0FF,9,Process status CLOSED/OFF,A5E02790053-01 §35.10 p.785
+0x9013,0xF0FF,9,Process status intermediate position,A5E02790053-01 §35.10 p.785
+0x9014,0xF0FF,9,Process status ON via AUTO,A5E02790053-01 §35.10 p.785
+0x9015,0xF0FF,9,Process status ON via manual,A5E02790053-01 §35.10 p.785
+0x9016,0xF0FF,9,Process status ON via protective command,A5E02790053-01 §35.10 p.785
+0x9017,0xF0FF,9,Process status OFF via AUTO,A5E02790053-01 §35.10 p.785
+0x9018,0xF0FF,9,Process status OFF via manual,A5E02790053-01 §35.10 p.785
+0x9019,0xF0FF,9,Process status OFF via protective command,A5E02790053-01 §35.10 p.785
+0x9021,0xF0FF,9,Function error on approach,A5E02790053-01 §35.10 p.785
+0x9022,0xF0FF,9,Function error on leaving,A5E02790053-01 §35.10 p.785
+0x9031,0xF0FF,9,Actuator (DE/WE) limit position OPEN,A5E02790053-01 §35.10 p.785
+0x9032,0xF0FF,9,Actuator (DE/WE) limit position not OPEN,A5E02790053-01 §35.10 p.785
+0x9033,0xF0FF,9,Actuator (DE/WE) limit position CLOSED,A5E02790053-01 §35.10 p.785
+0x9034,0xF0FF,9,Actuator (DE/WE) limit position not CLOSED,A5E02790053-01 §35.10 p.785
+0x9041,0xF0FF,9,"Illegal status, tolerance time elapsed",A5E02790053-01 §35.10 p.785
+0x9042,0xF0FF,9,"Illegal status, tolerance time not elapsed",A5E02790053-01 §35.10 p.785
+0x9043,0xF0FF,9,"Interlock error, tolerance time = 0",A5E02790053-01 §35.10 p.785
+0x9044,0xF0FF,9,"Interlock error, tolerance time > 0",A5E02790053-01 §35.10 p.785
+0x9045,0xF0FF,9,No reaction,A5E02790053-01 §35.10 p.785
+0x9046,0xF0FF,9,"Final status exited illegally, tolerance time = 0",A5E02790053-01 §35.10 p.785
+0x9047,0xF0FF,9,"Final status exited illegally, tolerance time > 0",A5E02790053-01 §35.10 p.785
+0x9050,0xF0FF,9,Upper limit of signal range USR,A5E02790053-01 §35.10 p.785
+0x9051,0xF0FF,9,Upper limit of measuring range UMR,A5E02790053-01 §35.10 p.786
+0x9052,0xF0FF,9,Lower limit of signal range LSR,A5E02790053-01 §35.10 p.786
+0x9053,0xF0FF,9,Lower limit of measuring range LMR,A5E02790053-01 §35.10 p.786
+0x9054,0xF0FF,9,Upper alarm limit UAL,A5E02790053-01 §35.10 p.786
+0x9055,0xF0FF,9,Upper warning limit UWL,A5E02790053-01 §35.10 p.786
+0x9056,0xF0FF,9,Upper tolerance limit UTL,A5E02790053-01 §35.10 p.786
+0x9057,0xF0FF,9,Lower tolerance limit LTL,A5E02790053-01 §35.10 p.786
+0x9058,0xF0FF,9,Lower warning limit LWL,A5E02790053-01 §35.10 p.786
+0x9059,0xF0FF,9,Lower alarm limit LAL,A5E02790053-01 §35.10 p.786
+0x9060,0xF0FF,9,GRAPH7 step entering/leaving,A5E02790053-01 §35.10 p.786
+0x9061,0xF0FF,9,GRAPH7 interlock error,A5E02790053-01 §35.10 p.786
+0x9062,0xF0FF,9,GRAPH7 execution error,A5E02790053-01 §35.10 p.786
+0x9063,0xF0FF,9,GRAPH7 error noted,A5E02790053-01 §35.10 p.786
+0x9064,0xF0FF,9,GRAPH7 error acknowledged,A5E02790053-01 §35.10 p.786
+0x9070,0xF0FF,9,Trend exceeded in positive direction,A5E02790053-01 §35.10 p.786
+0x9071,0xF0FF,9,Trend exceeded in negative direction,A5E02790053-01 §35.10 p.786
+0x9072,0xF0FF,9,No reaction,A5E02790053-01 §35.10 p.786
+0x9073,0xF0FF,9,Final state exited illegally,A5E02790053-01 §35.10 p.786
+0x9080,0xF0FF,9,"Limit value exceeded, tolerance time = 0",A5E02790053-01 §35.10 p.786
+0x9081,0xF0FF,9,"Limit value exceeded, tolerance time > 0",A5E02790053-01 §35.10 p.786
+0x9082,0xF0FF,9,"Below limit value, tolerance time = 0",A5E02790053-01 §35.10 p.786
+0x9083,0xF0FF,9,"Below limit value, tolerance time > 0",A5E02790053-01 §35.10 p.786
+0x9084,0xF0FF,9,"Gradient exceeded, tolerance time = 0",A5E02790053-01 §35.10 p.786
+0x9085,0xF0FF,9,"Gradient exceeded, tolerance time > 0",A5E02790053-01 §35.10 p.786
+0x9086,0xF0FF,9,"Below gradient, tolerance time = 0",A5E02790053-01 §35.10 p.786
+0x9087,0xF0FF,9,"Below gradient, tolerance time > 0",A5E02790053-01 §35.10 p.786
+0x9190,0xFFFF,9,User parameter assignment error entering/leaving,A5E02790053-01 §35.10 p.786
+0x9090,0xFFFF,9,User parameter assignment error entering/leaving,A5E02790053-01 §35.10 p.786
+0x91F0,0xFFFF,9,Overflow,A5E02790053-01 §35.10 p.786
+0x91F1,0xFFFF,9,Underflow,A5E02790053-01 §35.10 p.786
+0x91F2,0xFFFF,9,Division by 0,A5E02790053-01 §35.10 p.786
+0x91F3,0xFFFF,9,Illegal calculation operation,A5E02790053-01 §35.10 p.786
+0xA000,0xF000,10,Events available for user,A5E02790053-01 §35.11 p.787
+0xB000,0xF000,11,Events available for user,A5E02790053-01 §35.11 p.787

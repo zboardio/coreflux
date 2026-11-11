@@ -1,0 +1,36 @@
+# The PLC historian: the one datasource the dashboards and the alert rules read (by its uid, timescale-edge).
+#
+# Every value comes from the Grafana CONTAINER's environment: Grafana expands $VAR in provisioning files from its own
+# process environment, so these variables must be passed into the container, not only to Compose. Nothing is stored here.
+#   TIMESCALE_HOST            host of the TimescaleDB (PostgreSQL) server, or host:port (default port 5432)
+#   TIMESCALE_DB              the historian's database
+#   GRAFANA_READER_USER       a read-only role: SELECT on the PLC tables and views, EXECUTE on their functions
+#   GRAFANA_READER_PASSWORD   its password
+
+apiVersion: 1
+
+# Provisioning matches a datasource by NAME and never rewrites the uid of an existing one; the dashboards and rules
+# reference the uid. Deleting the entry at every start guarantees it.
+deleteDatasources:
+  - name: PLC historian
+    orgId: 1
+
+datasources:
+  - name: PLC historian
+    uid: timescale-edge
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: ${TIMESCALE_HOST}
+    user: ${GRAFANA_READER_USER}
+    isDefault: true
+    editable: false
+    jsonData:
+      database: ${TIMESCALE_DB}
+      sslmode: disable                      # the database on the same container network; set require (or verify-full) for a remote one
+      timescaledb: true
+      postgresVersion: 1500                 # the newest the plugin lists; PostgreSQL 17 works with it
+      maxOpenConns: 5                       # Grafana stays small next to the broker's own connections
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: ${GRAFANA_READER_PASSWORD}

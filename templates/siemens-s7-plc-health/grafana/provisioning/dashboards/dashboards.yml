@@ -1,0 +1,23 @@
+# The dashboards: every file under json/, one folder per sub-directory (PLC).
+#
+#   json/PLC/plc-fleet.json            PLC fleet, the home page (GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH, ../../README.md)
+#   json/PLC/plc-detail-s7-300.json    PLC detail for an S7-300
+#   json/PLC/plc-detail-s7-1500.json   PLC detail for an S7-1500
+#
+# The JSON is generated (its description says so): not editable from the UI, rescanned every 30 s, and a dashboard whose
+# file is removed is removed from Grafana too.
+
+apiVersion: 1
+
+providers:
+  - name: plc-health
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    editable: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
+      foldersFromFilesStructure: true

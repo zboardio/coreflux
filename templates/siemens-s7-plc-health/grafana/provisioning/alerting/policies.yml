@@ -1,0 +1,20 @@
+# Notification routing: everything to not-sent, and everything muted (contactpoints.yml says why and how to change it).
+#
+# Grafana refuses a mute timing on the ROOT policy, so one child route matches every alert (each has an alertname) and
+# carries the always-on mute. Grouped per rule and PLC.
+
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: not-sent
+    group_by: [alertname, plc_id]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 24h
+
+    routes:
+      - receiver: not-sent
+        object_matchers:
+          - [alertname, "=~", ".+"]
+        mute_time_intervals: [always]

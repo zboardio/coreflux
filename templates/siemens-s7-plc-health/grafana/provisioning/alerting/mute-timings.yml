@@ -1,0 +1,11 @@
+# The always-on mute (policies.yml): 00:00–24:00 every day. Remove it from the route to send alerts.
+
+apiVersion: 1
+
+muteTimes:
+  - orgId: 1
+    name: always
+    time_intervals:
+      - times:
+          - start_time: "00:00"
+            end_time: "24:00"

@@ -8,6 +8,7 @@ or the cloud account to try: every template ships a simulator notebook.
 |---|---|---|
 | [`zigbee2mqtt-sonoff-uns/`](zigbee2mqtt-sonoff-uns/README.md) | Zigbee2MQTT + a Sonoff USB coordinator → a position-based UNS: device map, key-by-key mapper, liveness chain (device, bridge, broker session), pairing from the broker, Rules confining Z2M | 2.14.3: 21 cells, 23 checks ([`VERIFICATION.md`](zigbee2mqtt-sonoff-uns/VERIFICATION.md)) |
 | [`netatmo-energy-oauth/`](netatmo-energy-oauth/README.md) | Netatmo Energy over REST: OAuth 2 refresh-token rotation on the broker, self-heal, collision-proof timing, room fan-out without room ids in code, setpoint writes from the UNS, Rules | 2.14.3: 39 cells, 25 checks, against a mock API that rotates tokens like Netatmo ([`VERIFICATION.md`](netatmo-energy-oauth/VERIFICATION.md)) |
+| [`siemens-s7-plc-health/`](siemens-s7-plc-health/README.md) | Siemens S7-300 and S7-1500 over the native `SIEMENS_S7` connector: whole-ring reads with a read contract, error-OB calls in both forms of start information, the S7-300's diagnostic buffer with Siemens' texts, a health loop per path, STOP seen from outside, a TimescaleDB historian and Grafana; one notebook per family, the S7-300's second path (MPI) | 2.22.0: 47 cells, 58 checks, against two mock PLCs that speak S7 and a real TimescaleDB ([`VERIFICATION.md`](siemens-s7-plc-health/VERIFICATION.md)) |
 
 ## A template folder
 
@@ -63,7 +64,9 @@ that names what it **Reads** and what it **Writes**.
    deploy alone proves little.
 
 For Netatmo, a mock API that rotates tokens the way Netatmo does takes the place of
-`api.netatmo.com`.
+`api.netatmo.com`. For the Siemens PLCs, two mock PLCs that speak S7 (python-snap7, running the kit's
+algorithm) take the place of the CPUs, behind the template's real routes, with a real TimescaleDB behind the store
+route; that template is verified on 2.22.0, the version it requires.
 
 ## LoT lessons, measured on 2.14.3
 

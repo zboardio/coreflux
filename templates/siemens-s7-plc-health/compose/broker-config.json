@@ -1,0 +1,31 @@
+{
+  "Name": "coreflux-edge",
+  "Port": 1883,
+  "TlsPort": 8883,
+  "WebsocketPort": 5000,
+  "WebsocketPortTls": 5443,
+  "BindIPForMQTT": "0.0.0.0",
+  "BindIPForMQTTwithTls": "0.0.0.0",
+  "BindIpForWebSockets": "0.0.0.0",
+  "BindIpForWebSocketsTls": "0.0.0.0",
+  "AnonymousLogin": false,
+  "CleanSession": false,
+  "SessionExpiryInterval": 0,
+  "MaxPendingMessagesPerClient": 20000,
+  "FullDebugLog": false,
+  "CloudLogging": false,
+  "ResendRetainTopics": false,
+  "ClientCertificationValidation": false,
+  "CheckCertificateChainValidation": false,
+  "CheckCertificateRevokationList": false,
+  "ServerCertificatePath": "",
+  "ServerCertificateKeyPath": "",
+  "ServerCertificatePassword": "",
+  "RootCACertificatePath": "",
+  "Durability": {
+    "Enabled": true,
+    "FsyncPolicy": "interval",
+    "FsyncIntervalMs": 50,
+    "Codec": "json"
+  }
+}

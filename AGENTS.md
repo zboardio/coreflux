@@ -5,8 +5,8 @@ template from this repository in their own project. Read it before changing a no
 
 ## What is here
 
-- `templates/<name>/` is one self-contained template: solution notebook, simulator notebook,
-  `README.md`, `compose/`, `VERIFICATION.md`, `GALLERY.md`. Start from the template's `README.md`:
+- `templates/<name>/` is one self-contained template: solution notebook (one per device family where
+  the families differ), simulator notebook, `README.md`, `compose/`, `VERIFICATION.md`, `GALLERY.md`. Start from the template's `README.md`:
   topics, quick start, production readiness and an "Adapting this template" section.
 - [`templates/README.md`](templates/README.md) holds the layout, the conventions every template
   shares, and the **LoT lessons measured on 2.14.3**.
@@ -20,7 +20,10 @@ template from this repository in their own project. Read it before changing a no
   first line of a code cell.
 - **Device and room ids go in the map action only** (`ON START`), never in the mapper. Anything
   unmapped is published under `…/unmapped/…`, not dropped.
-- **Keep the UNS shape**: `<root>/<Area>/<Position>/<Leaf>`, every leaf the five-key envelope
+  `siemens-s7-plc-health` keeps its per-PLC facts in one table instead, `PLCS` at the top of the decoder
+  cell, which is the same in both family notebooks: edit both copies alike, and the PLC registry with them.
+- **Keep the UNS shape**: `<root>/<Area>/<Position>/<Leaf>` (a PLC read over several paths adds the path as a
+  slot: `acme/site01/Automation/PLC01/PN/<Leaf>`), every leaf the five-key envelope
   `value`, `timestamp` (observation time, ISO-8601 Z), `datatype`, `status`, `units` (numeric leaves
   only). Replace the example root `acme/site01` with the user's own.
 - **Follow every LoT lesson** in `templates/README.md` before writing LoT. They are failures we hit on a

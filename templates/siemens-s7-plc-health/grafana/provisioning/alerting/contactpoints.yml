@@ -1,0 +1,21 @@
+# The one contact point, and it never delivers: as shipped, the PLC rules are evaluated and SHOWN (the alert lists on
+# the PLC fleet and on each PLC detail page), never sent.
+#
+# Grafana needs a receiver for its root policy, so this one points at the discard port on the container's own loopback,
+# and policies.yml mutes every alert at all times besides, so it is not even tried. Without this file, Grafana's default
+# contact point (email) would be tried for every firing alert, and fail in the log until SMTP is configured.
+#
+# To be notified: add your contact point below (email, Slack, Teams, webhook…; Grafana's alerting documentation lists
+# the settings), name it as the receiver in policies.yml, remove the mute there, and restart Grafana.
+
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: not-sent
+    receivers:
+      - uid: not-sent
+        type: webhook
+        disableResolveMessage: true
+        settings:
+          url: http://127.0.0.1:9/never-sent

@@ -20,6 +20,7 @@ added over time as folders of their own.
 |---|---|---|
 | [`zigbee2mqtt-sonoff-uns`](templates/zigbee2mqtt-sonoff-uns/README.md) | Zigbee2MQTT sensors on a Sonoff USB coordinator into a position-based UNS, with a liveness chain, pairing from the broker and Rules | 2.14.2+ |
 | [`netatmo-energy-oauth`](templates/netatmo-energy-oauth/README.md) | Netatmo Energy valves and thermostats over REST into a UNS, setpoints written back, OAuth 2 token rotation inside the broker | 2.14.2+ |
+| [`siemens-s7-plc-health`](templates/siemens-s7-plc-health/README.md) | Siemens S7-300 and S7-1500 PLCs over the native S7 connector: cycle times, error-OB calls in Siemens' words, the diagnostic buffer, a health loop and STOP seen from outside, into a UNS, TimescaleDB and Grafana | 2.22+ |
 
 The templates are also submitted to the community gallery at
 [templates.coreflux.org](https://templates.coreflux.org).

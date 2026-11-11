@@ -1,0 +1,261 @@
+# What the S7-1500 kit records from its error OBs (s7-1500/plc/perf_kit.scl, DB_PerfDiag.Fault[0..5]): the meaning of each
+# start-information code, as Siemens publishes it in the TIA Portal help, "Functional description of S7-1500 CPUs" V21
+# (11/2025), one page per OB (the source column). Researched 2026-11-09; read as raw topic text, no forum sources.
+# Codes are hex without 16#. OB83/OB86 rows are keyed Event_Class/Fault_ID (39 = incoming/removed, 38 = outgoing/inserted).
+# Not listed by Siemens for the S7-1500, so not here: OB80 Fault_ID 03/04/0A; OB83 63-66 and OB86 C9/CF (named as possible
+# values without a meaning). OB121's Area is left out: its page labels 01/02 and 81/82 the other way round from OB122's
+# page and from GET_ERROR's AREA table; OB122's reading (01/02 direct access, 81/82 process image) is the one used here.
+# The diagnostic buffer shows the same events as 16# 02:2942 / 02:2943: text list 2, and the classic event ID, class 2
+# (synchronous error) + OB122's Fault_ID 42/43 ("Mask synchronous error events (S7-1500)", Extended instructions V20).
+# The buffer entry is written whether OB122 exists or not; GET_ERR_ID in the failing block suppresses both.
+# CLASSIC start information (2026-11-10): an error OB of an S7-1500 project migrated from an S7-300/400 can keep the classic
+# 20-byte TEMP start information (OB82_EV_CLASS, OB82_MDL_ADDR, ...); the kit's FC_PerfFaultClassic records it in the same
+# slot with bit 7 of EvClass set (s7-1500/plc/perf_kit.scl, the comment above typPerfFaultSlot). The "Classic ..." rows are
+# Siemens' classic meanings: "System Software for S7-300/400 System and Standard Functions", Volume 1/2, Reference Manual
+# 05/2010, A5E02789976-01, chapter 1 (one section per OB, page cited), and Volume 2/2, A5E02790053-01 §33.2 (module class),
+# read from the PDF's text layer on 2026-11-10. FROM DOCUMENTATION, NOT MEASURED: the bench's CPU 1511 measured the classic
+# INTERFACES of OB82, OB86 and OB122 (names, types, offsets), never a value an S7-1500 puts in them; classic OB80, OB83 and
+# OB121 were not in that project. Codes: "Classic EV_CLASS/FLT_ID" as Event_Class/Fault_ID above (OB82's 38/39 are its
+# outgoing/incoming event); "Classic fault bit" "8.0" = byte 8, bit 0 of OB82's TEMP (bytes 8 to 11 are kept whole; 11.7 is
+# reserved and not listed); "Classic module class" = bits 0-3 of OB82_MDL_TYPE (byte 9); "Classic memory area" = bits 0-3 and
+# "Classic access type" = bits 4-7 of OB121_RESERVED_1 (for 22/23/28/29) and OB122_MEM_AREA. Not listed: block type 16#8B
+# (no classic OB page names it), OB80's ERROR_INFO and OB86's RACKS_FLTD (decoded by rule in the decoder and the view).
+ob,field,code_hex,meaning,source
+80,Fault_ID,01,Cycle time exceeded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+80,Fault_ID,02,The requested OB is still being processed,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+80,Fault_ID,05,Expired time interrupt due to time jump,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+80,Fault_ID,06,Expired time interrupt upon re-entry into RUN after HOLD,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+80,Fault_ID,07,Overflow of the OB request buffer for the current priority class,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+80,Fault_ID,08,Isochronous mode interrupt: time error,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+80,Fault_ID,09,Interrupt loss due to high interrupt load,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+80,Fault_ID,0B,Technology synchronization interrupt: time error,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+80,Fault_ID,0C,Cycle time exceeded for the second time (S7-1500 R/H only),https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/time-error-ob-s7-1500
+82,IO_state bit,0,Good,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+82,IO_state bit,1,Deactivated,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+82,IO_state bit,2,Maintenance required,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+82,IO_state bit,3,Maintenance demanded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+82,IO_state bit,4,Error,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+82,IO_state bit,5,Not available,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+82,IO_state bit,6,Qualified,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+82,IO_state bit,7,Not available,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+82,IO_state bit,15,"With bit 4 or 5: 0 network error, 1 hardware error",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/diagnostic-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,39/51,IO module removed,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,39/54,IO submodule removed,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,38/54,"IO submodule inserted, matches the configuration",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,38/55,"Inserted, does not match the configured submodule",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,38/56,"Inserted, error in module parameter assignment",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,38/57,"Inserted, with fault or maintenance",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,38/58,"IO submodule, access error corrected",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,39/61,Module removed or not responding,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,38/61,Module inserted,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,33/67,R/H CiR reparameterization started,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,32/67,R/H CiR reparameterization finished,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,32/68,R/H CiR reparameterization rejected,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,39/71,R/H central module removed,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,38/72,R/H central module inserted,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+83,Event_Class/Fault_ID,38/73,R/H central module inserted with a fault,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/pull/plug-interrupt-ob-s7-1500
+86,Event_Class/Fault_ID,39/C3,DP master system failure,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,39/C4,DP slave failure,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,38/C4,DP slave return,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,39/CA,PROFINET IO system failure,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,39/CB,PROFINET IO device failure,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,38/CB,PROFINET IO device return,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,38/CC,PN IO device returned with fault or maintenance,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,38/CD,PN IO device returned with a preset/actual configuration difference,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,38/CE,PN IO device returned with an error in module configuration,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,39/F8,Some submodules of a PN I-device failed,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,38/F8,Some submodules of a PN I-device returned,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+86,Event_Class/Fault_ID,38/F9,Some submodules of a PN I-device returned with a configuration difference,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/rack-error-ob-s7-1500
+121,Fault_ID,00,Maximum nesting depth of block calls exceeded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,03,NULL pointer used to address an operand,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,04,Unknown instruction,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,05,Stop instruction,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,20,Addressed string has incorrect length information,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,21,BCD conversion error,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,22,Area length error when reading,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,23,Area length error when writing,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,24,Area error when reading,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,25,Area error when writing,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,26,Error in timer number,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,27,Error in counter number,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,28,Read access to byte/word/dword with a pointer whose bit address is not zero,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,29,Access to byte/word/dword with a pointer whose bit address is not zero (printed twice by Siemens; presumably the write case),https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,2C,NULL pointer,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,30,Write access to a write-protected global DB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,31,Write access to a write-protected instance DB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,32,"DB number error, global DB",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,33,"DB number error, instance DB",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,34,Number error during FC call,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,35,Number error during FB call,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,38,Type-safe DB not loaded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,39,DB not defined as type-safe,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,3A,Access to a DB that is not loaded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,3B,DB does not exist,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,3C,FC not loaded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,3D,SFC not loaded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,3E,FB not loaded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,3F,SFB not available,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,50,Type-safe DB not loaded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,51,DB not type-safe,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,75,Maximum nesting depth exceeded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,76,Maximum available local data exceeded,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,77,Block call with unsuitable parameter interface,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,A1,Write access to a write-protected tag,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Fault_ID,A2,Access to a tag with an invalid numerical value,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,BlockType,1,OB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,BlockType,2,FC,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,BlockType,3,FB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,BlockType,4,SFC,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,BlockType,5,SFB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,BlockType,6,DB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+122,BlockType,1,OB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,BlockType,2,FC,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,BlockType,3,FB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,BlockType,4,SFC,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,BlockType,5,SFB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,BlockType,6,DB,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Fault_ID,42,"I/O access error, reading",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Fault_ID,43,"I/O access error, writing",https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Area,01,Direct (peripheral) access to inputs,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Area,02,Direct (peripheral) access to outputs,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Area,81,Access to the process image of the inputs,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Area,82,Access to the process image of the outputs,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Reaction,0,Ignore,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Reaction,1,Replace the incorrect value,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+122,Reaction,2,Skip the command,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/i/o-access-error-ob-s7-1500
+121,Reaction,0,Ignore,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Reaction,1,Replace the incorrect value,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Reaction,2,Skip the command,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+121,Reaction,3,Programmed error handling,https://docs.tia.siemens.cloud/r/en-us/v21/functional-description-of-s7-1500-cpus-s7-1500/organization-blocks-s7-1500/description-of-all-types-of-organization-blocks-s7-1500/programming-error-ob-s7-1500
+80,Classic FLT_ID,01,Cycle time exceeded,A5E02789976-01 §1.16 p.50-52
+80,Classic FLT_ID,02,The called OB is still being executed,A5E02789976-01 §1.16 p.50-52
+80,Classic FLT_ID,05,Elapsed time-of-day interrupt due to moving the clock forward,A5E02789976-01 §1.16 p.50-52
+80,Classic FLT_ID,06,Elapsed time-of-day interrupt on return to RUN after HOLD,A5E02789976-01 §1.16 p.50-52
+80,Classic FLT_ID,07,Overflow of OB request buffer for the current priority class,A5E02789976-01 §1.16 p.50-52
+80,Classic FLT_ID,08,Synchronous-cycle interrupt time error,A5E02789976-01 §1.16 p.50-52
+80,Classic FLT_ID,09,Interrupt loss due to high interrupt load,A5E02789976-01 §1.16 p.50-52
+80,Classic FLT_ID,0A,Resume RUN after CiR,A5E02789976-01 §1.16 p.50-52
+80,Classic FLT_ID,0B,Technology synchronization interrupt,A5E02789976-01 §1.16 p.50-52
+82,Classic EV_CLASS/FLT_ID,39/42,"Diagnostic interrupt, incoming event: a problem, or a component requires maintenance",A5E02789976-01 §1.18 p.55-56
+82,Classic EV_CLASS/FLT_ID,38/42,"Diagnostic interrupt, outgoing event: no problem and no maintenance left",A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,8.0,Module is defective,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,8.1,Internal fault,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,8.2,External fault,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,8.3,Channel fault,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,8.4,External voltage failed,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,8.5,Front panel connector not plugged in,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,8.6,Module is not configured,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,8.7,Incorrect parameters on module,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,9.4,Channel information exists,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,9.5,User information exists,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,9.6,Diagnostic interrupt from substitute,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,9.7,Maintenance required,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,10.0,Submodule is missing or has an error,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,10.1,Communication problem,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,10.2,Module in STOP,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,10.3,Watchdog timer responded,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,10.4,Internal power supply failed,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,10.5,Battery exhausted,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,10.6,Entire backup failed,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,10.7,Maintenance demanded,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,11.0,Expansion rack failure,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,11.1,Processor failure,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,11.2,EPROM fault,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,11.3,RAM fault,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,11.4,ADC/DAC error,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,11.5,Fuse tripped,A5E02789976-01 §1.18 p.55-56
+82,Classic fault bit,11.6,Hardware interrupt lost,A5E02789976-01 §1.18 p.55-56
+82,Classic module class,0,CPU,A5E02790053-01 §33.2 p.692
+82,Classic module class,3,DP standard slave,A5E02790053-01 §33.2 p.692
+82,Classic module class,4,IM,A5E02790053-01 §33.2 p.692
+82,Classic module class,5,Analog module,A5E02790053-01 §33.2 p.692
+82,Classic module class,8,Function module,A5E02790053-01 §33.2 p.692
+82,Classic module class,B,I slave,A5E02790053-01 §33.2 p.692
+82,Classic module class,C,CP,A5E02790053-01 §33.2 p.692
+82,Classic module class,F,Digital module,A5E02790053-01 §33.2 p.692
+83,Classic EV_CLASS/FLT_ID,39/51,PROFINET IO module removed,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,39/54,PROFINET IO submodule removed,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/54,PROFINET IO submodule inserted and matches configured submodule,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/55,"PROFINET IO submodule inserted, but does not match configured submodule",A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/56,"PROFINET IO submodule inserted, but error with module parameters",A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/58,"PROFINET IO submodule, access error corrected",A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,39/61,Module removed or not responding,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/61,Module inserted. Module type OK,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/63,Module inserted but incorrect module type,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/64,Module inserted but problem (module ID cannot be read),A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/65,Module inserted but error in module parameter assignment,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,39/66,"Module not responding, load voltage error",A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,38/66,"Module responds again, load voltage error corrected",A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,33/67,Start of module reconfiguration,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,32/67,End of module reconfiguration,A5E02789976-01 §1.19 p.58-60
+83,Classic EV_CLASS/FLT_ID,39/68,Module reconfiguration terminated with error,A5E02789976-01 §1.19 p.58-60
+86,Classic EV_CLASS/FLT_ID,39/C1,Expansion rack failure,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/C1,Expansion rack operational again,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/C2,"Expansion rack operational again, with a discrepancy between expected and actual configuration",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,39/C3,Distributed I/O: failure of a DP master system,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,39/C4,Failure of a DP station,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/C4,Return of a DP station,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,39/C5,"Return of the station, but station faulty",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/C5,"Return of the station, but station faulty",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/C6,"Expansion rack operational again, but still an error with module parameters",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/C7,"Return of a DP station, but error in module parameter assignment",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/C8,"Return of a DP station, however discrepancy in configured and actual configuration",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,32/C9,"Enabling a DP slave with SFC 12 D_ACT_DP, MODE=3",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,33/C9,"Disabling a DP slave with SFC 12 D_ACT_DP, MODE=4",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,39/CA,PROFINET IO system failure,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,39/CB,PROFINET IO station failure,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/CB,PROFINET IO station return,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,39/CC,PROFINET IO station return with problem,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/CC,PROFINET IO station return with problem,A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/CD,"PROFINET IO station return, expected and actual configuration differ",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,38/CE,"PROFINET IO station return, error in module configuration parameters",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,32/CF,"Enabling a PROFINET IO device with SFC 12 D_ACT_DP, MODE=3",A5E02789976-01 §1.22 p.66-70
+86,Classic EV_CLASS/FLT_ID,33/CF,"Disabling a PROFINET IO device with SFC 12 D_ACT_DP, MODE=4",A5E02789976-01 §1.22 p.66-70
+121,Classic FLT_ID,21,BCD conversion error,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,22,Area length error when reading,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,23,Area length error when writing,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,24,Range error when reading,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,25,Range error when writing,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,26,Error for timer number,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,27,Error for counter number,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,28,"Read access to a byte, word or double word with a pointer whose bit address is not 0",A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,29,"Write access to a byte, word or double word with a pointer whose bit address is not 0",A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,30,Write access to a write-protected global DB,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,31,Write access to a write-protected instance DB,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,32,DB number error accessing a global DB,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,33,DB number error accessing an instance DB,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,34,FC number error in FC call,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,35,FB number error in FB call,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,3A,Access to a DB that has not been loaded,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,3C,Access to an FC that has not been loaded,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,3D,Access to an SFC that is not available,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,3E,Access to an FB that has not been loaded,A5E02789976-01 §1.27 p.82-84
+121,Classic FLT_ID,3F,Access to an SFB that is not available,A5E02789976-01 §1.27 p.82-84
+121,Classic BLK_TYPE,88,OB,A5E02789976-01 §1.27 p.82-84
+121,Classic BLK_TYPE,8A,DB,A5E02789976-01 §1.27 p.82-84
+121,Classic BLK_TYPE,8C,FC,A5E02789976-01 §1.27 p.82-84
+121,Classic BLK_TYPE,8E,FB,A5E02789976-01 §1.27 p.82-84
+122,Classic BLK_TYPE,88,OB,A5E02789976-01 §1.28 p.85-86
+122,Classic BLK_TYPE,8C,FC,A5E02789976-01 §1.28 p.85-86
+122,Classic BLK_TYPE,8E,FB,A5E02789976-01 §1.28 p.85-86
+121,Classic memory area,0,I/O area,A5E02789976-01 §1.27 p.82-84
+121,Classic memory area,1,process-image input table,A5E02789976-01 §1.27 p.82-84
+121,Classic memory area,2,process-image output table,A5E02789976-01 §1.27 p.82-84
+121,Classic memory area,3,bit memory,A5E02789976-01 §1.27 p.82-84
+121,Classic memory area,4,global DB,A5E02789976-01 §1.27 p.82-84
+121,Classic memory area,5,instance DB,A5E02789976-01 §1.27 p.82-84
+121,Classic memory area,6,own local data,A5E02789976-01 §1.27 p.82-84
+121,Classic memory area,7,local data of caller,A5E02789976-01 §1.27 p.82-84
+122,Classic memory area,0,I/O area,A5E02789976-01 §1.28 p.85-86
+122,Classic memory area,1,process image of the inputs,A5E02789976-01 §1.28 p.85-86
+122,Classic memory area,2,process image of the outputs,A5E02789976-01 §1.28 p.85-86
+121,Classic access type,0,bit access,A5E02789976-01 §1.27 p.82-84
+121,Classic access type,1,byte access,A5E02789976-01 §1.27 p.82-84
+121,Classic access type,2,word access,A5E02789976-01 §1.27 p.82-84
+121,Classic access type,3,double word access,A5E02789976-01 §1.27 p.82-84
+122,Classic access type,0,bit access,A5E02789976-01 §1.28 p.85-86
+122,Classic access type,1,byte access,A5E02789976-01 §1.28 p.85-86
+122,Classic access type,2,word access,A5E02789976-01 §1.28 p.85-86
+122,Classic access type,3,double word access,A5E02789976-01 §1.28 p.85-86
+122,Classic FLT_ID,42,"I/O access error, reading",A5E02789976-01 §1.28 p.85-86
+122,Classic FLT_ID,43,"I/O access error, writing",A5E02789976-01 §1.28 p.85-86
