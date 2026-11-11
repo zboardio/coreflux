@@ -1,6 +1,6 @@
 # Add the kit to an S7-1500 project
 
-**Written for:** CPU 1511-1 PN, `6ES7 511-1AK02-0AB0`, firmware V2.6, in TIA Portal V15.1, added to a project that already runs a program. The source generates without errors in TIA V15.1 and runs on the CPU; `FC_PerfFaultClassic`, added since for error OBs with classic start information (step 7), has not been compiled yet. **Needs:** STEP 7 Professional or Basic for your CPU's firmware, and no licence: the kit uses only PUT/GET and standard instructions.
+**Written for:** CPU 1511-1 PN, `6ES7 511-1AK02-0AB0`, firmware V2.6, in TIA Portal V15.1, added to a project that already runs a program. The source generates without errors in TIA V15.1 and runs on the CPU, `FC_PerfFaultClassic` for error OBs with classic start information (step 7) included: it compiles there and records a classic OB122 on the CPU. **Needs:** STEP 7 Professional or Basic for your CPU's firmware, and no licence: the kit uses only PUT/GET and standard instructions.
 
 The kit is built to go into **a program that already exists** without touching its code:
 
@@ -156,7 +156,7 @@ Both forms keep the calls since the boot and the UTC stamp of the newest call. T
 | OB121 | `Fault_ID`, `BlockNr`, `BlockType`, `Area` | `SW_FLT`; the block (`BLK_TYPE`, `BLK_NUM`); the memory area and access type (`RESERVED_1`); `FLT_REG` (the wrong address, number or register) | `PRG_ADDR` |
 | OB122 | `Fault_ID`, `BlockNr`, `BlockType`, `Area` | `SW_FLT` (reading or writing); the block (`BLK_TYPE`, `BLK_NUM`); the memory area and access type (`MEM_AREA`); **the failing address (`MEM_ADDR`)** | `PRG_ADDR` |
 
-**Measured and from documentation.** The classic interfaces of OB82, OB86 and OB122 are as a migrated project on a CPU 1511 with firmware V2.6 declares them. Classic OB80, OB83 and OB121 were not in that project: their tags are taken from Siemens' S7-300/400 manual (*System Software for S7-300/400, System and Standard Functions*, Volume 1/2, chapter 1). The meaning of each classic code is from that manual too; what values an S7-1500 actually puts in a classic OB's start information is still to be seen on a CPU.
+**Measured and from documentation.** The classic interfaces of OB82, OB86 and OB122 are as a migrated project on a CPU 1511 with firmware V2.6 declares them. Classic OB80, OB83 and OB121 were not in that project: their tags are taken from Siemens' S7-300/400 manual (*System Software for S7-300/400, System and Standard Functions*, Volume 1/2, chapter 1). The meaning of each classic code is from that manual too; **Seen on the CPU:** a classic OB122 delivers what the manual says: event class `16#29`, `SW_FLT` `16#42` (I/O access error, reading), the block type and number of the block that made the access, the memory area and the address. A classic OB82 and OB86 have not been called on the bench yet, so their values are still from the manual only.
 
 ### 7.2 S7-1500 start information: the SCL calls
 
@@ -390,6 +390,10 @@ A watch table:
 | `DB_PerfHealth.PN.Life` | 1 and still, until a reader confirms it |
 
 Compare the cycle times with step 2.
+
+**In STOP the kit's DBs keep their last values.** The program writes them, and the program does not run in STOP: `Seq` stands still, and `DB_PerfDiag.Led` still says RUN. A reader must take the CPU's state from `Seq` (no new record while the reads still answer means the CPU is not scanning) and never from the stored LEDs. The DBs stay readable in STOP.
+
+**An error OB that is called all the time costs cycle time.** Measured with an existing program that reads I/O which is not wired, about 1,900 OB122 calls a second: the average cycle rose from 19.8 ms to 24.9 ms once each call ran `FC_PerfFaultClassic`, about 0.1 ms a call. The kit counted every call. In a healthy program an error OB is called rarely and the cost is not measurable.
 
 **Set the histogram once, before comparing anything:** `DB_PerfMon.Edges_ms` holds the buckets' upper edges. The default is `2 | 5 | 10 | 20 | 40 | 60 | 100` ms, to separate an idle CPU from one running a real program.
 
