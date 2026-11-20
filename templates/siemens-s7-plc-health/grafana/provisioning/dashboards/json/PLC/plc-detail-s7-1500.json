@@ -38,6 +38,17 @@
       "title": "S7-1500 detail",
       "type": "link",
       "url": "/d/plc-detail-s7-1500"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "S7-1200 detail",
+      "type": "link",
+      "url": "/d/plc-detail-s7-1200"
     }
   ],
   "panels": [
@@ -599,7 +610,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "timescale-edge"
       },
-      "description": "What this PLC is: model, family, area, the paths it is read over, order number, firmware and watchdog (its maximum cycle time), from plc_registry and plc_model. An S7-1500 on FW V2.6 reports no identity of its own (no Get_IM_Data on TIA V15.1): these are the registry's.",
+      "description": "What this PLC is: model, family, area, the paths it is read over, order number, firmware and watchdog (its maximum cycle time), from plc_registry and plc_model. The kit reads no identity on this family yet (an S7-1500 on FW V2.6 has no Get_IM_Data; I&M0 is reserved in DB_PerfDiag): these are the registry's.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1952,7 +1963,7 @@
         "type": "grafana-postgresql-datasource",
         "uid": "timescale-edge"
       },
-      "description": "The newest layout-2 read per path. `led` = RUN/STOP, ERROR, MAINT (LED's RET_VAL, LEDs above); `RT_INFO ret` = RT_INFO's RET_VAL for modes 11, 23, 24, 25 (0 = answered; 16#8452 = an INFO type this firmware lacks); comm load and the cycle figures from RT_INFO; `modules ret` and the IM status are reserved by the kit (zero until it reads them; no Get_IM_Data on TIA V15.1 / FW V2.6).",
+      "description": "The newest layout-2 read per path. `led` = RUN/STOP, ERROR, MAINT (LED's RET_VAL, LEDs above); `RT_INFO ret` = RT_INFO's RET_VAL for modes 11, 23, 24, 25 (0 = answered; 16#8452 = an INFO type this firmware lacks); comm load and the cycle figures from RT_INFO; `modules ret` and the IM status are reserved by the kit (zero until it reads them).",
       "fieldConfig": {
         "defaults": {
           "color": {

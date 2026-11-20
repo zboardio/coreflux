@@ -78,6 +78,7 @@ def build_health() -> bytes:
 # ── The S7-1500 (s7-1500/plc/perf_kit.scl): DB_PerfMon's read part and DB_PerfHealth as above; DB_PerfDiag is layout 2,
 # family 1500.
 DIAG1500_READ, DIAG1500_SIZE = 324, 348
+DIAG1200_SIZE = 362   # the S7-1200: the same read part, DB_PerfMon's boot facts at 348..361
 FAULT_OBS = (80, 82, 83, 86, 121, 122)   # the order of DB_PerfDiag.Fault[0..5]
 HEALTH_SLOTS_1500 = {"Reserve": 8, "PN": 26}
 
@@ -115,13 +116,36 @@ def build_diag_1500(now: datetime, classic: bool = True, ob122: tuple | None = N
     return bytes(b)
 
 
-def decode_diag_1500(raw: bytes) -> dict:
-    """DB_PerfDiag layout 2, family 1500: what the bench needs to see, before the broker's decoder learns it."""
+def build_diag_1200(now: datetime) -> bytes:
+    """DB_PerfDiag layout 2, family 1200 (s7-1200/plc/perf_kit.scl): the S7-1500's read part with four error OBs. OB83 called
+    once, a module pulled half an hour before now (an S7-1200 has no OB121/OB122: their slots stay zero); LEDs RUN; no
+    RT_INFO, so CommLoad_pct -1 and RtRet {-1,0,0,0}, the cycle figures the kit's own; the previous boot's end with four OBs."""
+    b = bytearray(DIAG1200_SIZE)
+    struct.pack_into(">hhhh", b, 0, 2, DIAG1500_READ, 1200, 0)
+    struct.pack_into(">i", b, 8, 2)
+    called = stamp(now - timedelta(minutes=30))
+    struct.pack_into(">hhii", b, 12, 83, 1, *called)
+    struct.pack_into(">iii", b, 24, 20261118, 90000000, 540)
+    struct.pack_into(">4i", b, 36, 0, 0, 1, 0)                         # PrevCount: OB83 once in the previous boot (no OB80/82/86:
+                                                                     # a boot after those is a fault signal, alert plc_fault_event)
+    # OB83 (FC_PerfFault, the S7-1200 shares the S7-1500's start information): Event_Class 16#39, Fault_ID 16#61 = module
+    # removed or not responding, LADDR 264
+    struct.pack_into(">iiiBBHHH", b, 60 + 2 * 20, 1, *called, 0x39, 0x61, 264, 0, 0)
+    struct.pack_into(">8h", b, 180, 2, 1, 1, 0, 0, 0, 0, 0)          # RUN on, ERROR off, MAINT off
+    struct.pack_into(">4h", b, 198, -1, 0, 0, 0)
+    struct.pack_into(">ffff", b, 208, -1.0, 21.2, 0.1, 1.0)
+    struct.pack_into(">iiih", b, 348, 20261119, 142536932, 1334, 1)   # the boot facts kept for DB_PerfMon
+    return bytes(b)
+
+
+def decode_diag_1500(raw: bytes, family_no: int = 1500) -> dict:
+    """DB_PerfDiag layout 2, family 1500 (or 1200: the same read part, s7-1200/plc/perf_kit.scl; its OB121/OB122 slots
+    stay empty): what the bench needs to see, before the broker's decoder learns it."""
     if len(raw) < DIAG1500_READ:
         return {"error": f"{len(raw)} bytes, want {DIAG1500_READ}"}
     layout, size, family = struct.unpack_from(">hhh", raw, 0)
-    if (layout, size, family) != (2, DIAG1500_READ, 1500):
-        return {"error": f"not DB_PerfDiag layout 2 / family 1500: layout {layout}, size {size}, family {family}"}
+    if (layout, size, family) != (2, DIAG1500_READ, family_no):
+        return {"error": f"not DB_PerfDiag layout 2 / family {family_no}: layout {layout}, size {size}, family {family}"}
     faults = {}
     for i, ob in enumerate(FAULT_OBS):
         count, d, t, ev, fid, i1, i2, i3 = struct.unpack_from(">iiiBBHHH", raw, 60 + 20 * i)

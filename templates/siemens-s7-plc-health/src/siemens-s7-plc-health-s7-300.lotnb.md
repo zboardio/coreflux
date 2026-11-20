@@ -133,21 +133,28 @@ PLCS = {
     "PLC01": {"plc_id": "acme-site01-plc01", "family": "s7-300", "read_s": 10,
               "paths": {"PN": ("S7PLC01PN", "192.168.1.10:102", "the CPU's own PN port")},
               "health_slots": (("PN", 26),),
-              "model": "CPU 315-2 PN/DP", "order_no": "6ES7 315-2EH13-0AB0", "installed": "2026-11-01T00:00:00Z"},
+              "model": "CPU 315-2 PN/DP", "order_no": "6ES7 315-2EH13-0AB0", "installed": "2026-11-01T00:00:00Z",
+              "area": "site01", "firmware": None, "description": "CPU 315-2 PN/DP, read over PN"},
     "PLC02": {"plc_id": "acme-site01-plc02", "family": "s7-1500", "read_s": 10,
               "paths": {"PN": ("S7PLC02PN", "192.168.1.20:102", "the CPU's own PN port")},
               "health_slots": (("PN", 26),),
-              "model": "CPU 1511-1 PN", "order_no": "6ES7 511-1AK02-0AB0", "installed": "2026-11-01T00:00:00Z"},
+              "model": "CPU 1511-1 PN", "order_no": "6ES7 511-1AK02-0AB0", "installed": "2026-11-01T00:00:00Z",
+              "area": "site01", "firmware": "V2.6", "description": "CPU 1511-1 PN, FW V2.6, PN only (PUT/GET)"},
 }
 KINDS = ("PerfMon", "PerfDiag", "PerfHealth")
 READ_SECONDS = 5
 # What a whole read of each DB returns, per (kind, family). DB_PerfMon and DB_PerfHealth are byte-identical across
 # families; DB_PerfDiag is layout 1 on the S7-300 (SZL copies, the diagnostic buffer) and layout 2 on the S7-1500.
+# The S7-1200 reads exactly as the S7-1500 (layout 2, family 1200 at byte 4); only four of its six slots are written.
 SIZE = {("PerfMon", "s7-300"): 8232, ("PerfDiag", "s7-300"): 644, ("PerfHealth", "s7-300"): 44,
-        ("PerfMon", "s7-1500"): 8232, ("PerfDiag", "s7-1500"): 324, ("PerfHealth", "s7-1500"): 44}
+        ("PerfMon", "s7-1500"): 8232, ("PerfDiag", "s7-1500"): 324, ("PerfHealth", "s7-1500"): 44,
+        ("PerfMon", "s7-1200"): 8232, ("PerfDiag", "s7-1200"): 324, ("PerfHealth", "s7-1200"): 44}
 LAYOUT = {("PerfMon", "s7-300"): 2, ("PerfDiag", "s7-300"): 1, ("PerfHealth", "s7-300"): 1,
-          ("PerfMon", "s7-1500"): 2, ("PerfDiag", "s7-1500"): 2, ("PerfHealth", "s7-1500"): 1}
-CPU_FAMILY = {"s7-1500": 1500}   # DB_PerfDiag layout 2 names its family at byte 4
+          ("PerfMon", "s7-1500"): 2, ("PerfDiag", "s7-1500"): 2, ("PerfHealth", "s7-1500"): 1,
+          ("PerfMon", "s7-1200"): 2, ("PerfDiag", "s7-1200"): 2, ("PerfHealth", "s7-1200"): 1}
+CPU_FAMILY = {"s7-1500": 1500, "s7-1200": 1200}   # DB_PerfDiag layout 2 names its family at byte 4
+# The error OBs a layout-2 family has beyond OB80/82/86 (which DB_PerfMon counts too): an S7-1200 has no OB121/OB122.
+EXTRA_OBS = {"s7-1500": (83, 121, 122), "s7-1200": (83,)}
 FAULT_OBS = (80, 82, 83, 86, 121, 122)   # DB_PerfDiag layout 2: Fault[0..5], PrevCount[0..5]
 CLASSIC = 0x80   # EvClass bit 7: the slot holds classic start information (FC_PerfFaultClassic); FC_PerfFault clears it
 RECORD_SIZE = 68
@@ -425,8 +432,9 @@ STATE_SIGNALS = ("CpuScanning", "DeviceStatus", "Health")
 
 
 def leaves_of(family):
-    """The leaves a PLC of this family publishes, in order: what its _asset lists."""
-    if family != "s7-1500":
+    """The leaves a PLC of this family publishes, in order: what its _asset lists. A layout-2 family (S7-1500, S7-1200)
+    has no LastDiagEvent and one OB<n>Events leaf per error OB of EXTRA_OBS."""
+    if family not in EXTRA_OBS:
         return LEAVES
     out = {}
     for leaf, spec in LEAVES.items():
@@ -434,8 +442,8 @@ def leaves_of(family):
             continue
         out[leaf] = LEAVES_1500.get(leaf, spec)
         if leaf == "OB86Events":
-            for extra in ("OB83Events", "OB121Events", "OB122Events"):
-                out[extra] = LEAVES_1500[extra]
+            for ob in EXTRA_OBS[family]:
+                out["OB%dEvents" % ob] = LEAVES_1500["OB%dEvents" % ob]
     return out
 
 
@@ -609,9 +617,9 @@ def _health(slot, state, now, scan):
     return value, json.dumps({"bad": bad, "rose": rose, "value": value})
 
 
-def _diag_leaves_l2(msg, out, now):
-    """DB_PerfDiag layout 2 (S7-1500): LastFault from the newest call of any error OB, with its meaning; the call
-    counts of the three OBs DB_PerfMon does not count, stamped with each one's newest call."""
+def _diag_leaves_l2(msg, out, now, family="s7-1500"):
+    """DB_PerfDiag layout 2 (S7-1500, S7-1200): LastFault from the newest call of any error OB, with its meaning; the call
+    counts of the OBs DB_PerfMon does not count (EXTRA_OBS of the family), stamped with each one's newest call."""
     slots = dict((s["ob"], s) for s in msg.get("ob_slots", []))
     newest = msg.get("newest", {})
     slot = slots.get(newest.get("ob"))
@@ -620,7 +628,7 @@ def _diag_leaves_l2(msg, out, now):
         out["LastFault"] = _envelope("LastFault", ob_fault_text(newest["ob"], slot), at)
     else:
         out["LastFault"] = _envelope("LastFault", "none", now)
-    for ob in (83, 121, 122):
+    for ob in EXTRA_OBS.get(family, (83, 121, 122)):
         s = slots.get(ob)
         if s:
             when = _stamp_s(s["last_date"], s["last_time"]) if s["calls"] > 0 else None
@@ -658,7 +666,7 @@ def uns_leaves(decoded, scanning, health_1, health_2, now=None):
         if msg.get("read_ms") is not None:
             out["ReadDuration"] = _envelope("ReadDuration", msg["read_ms"], now)
     elif kind == "PerfDiag" and msg.get("layout") == 2:
-        _diag_leaves_l2(msg, out, now)
+        _diag_leaves_l2(msg, out, now, cfg["family"])
     elif kind == "PerfDiag":
         fault = msg.get("fault", {})
         at = _stamp_s(fault.get("date", 0), fault.get("time", 0))
@@ -745,6 +753,21 @@ def _asset(via, plc="PLC01"):
                       "raw": "siemens/site01/" + (plc or "PLC01") + "/" + via + "/"},
            "leaves": leaves}
     return json.dumps(doc, separators=(",", ":"))
+
+
+def registration(_tick, plc="PLC01", now=None):
+    """The PLC as the historian's registry holds it, for plc_ingest() (kind "Register"), once a minute with _asset's
+    cadence: {"reg": <message as JSON text>} when due, else {"reg": null}, so the LoT action publishes only then. The row is
+    added when missing and never overwritten (the writer can only INSERT): a later change is an UPDATE by hand or by
+    schema.sql. Its model goes into plc_model the same way, interfaces unknown until plc_fleet.sql lists the model."""
+    now = time.time() if now is None else float(now)
+    if int(now / (2 * READ_SECONDS)) % ASSET_EVERY != 0:
+        return json.dumps({"reg": None})
+    cfg = _plc(plc)
+    msg = {"plc_id": cfg["plc_id"], "via": list(cfg["paths"])[0], "kind": "Register", "family": cfg["family"],
+           "model": cfg["model"], "order_no": cfg["order_no"], "paths": list(cfg["paths"]), "area": cfg.get("area"),
+           "firmware": cfg.get("firmware"), "description": cfg.get("description"), "clock_zone": "UTC"}
+    return json.dumps({"reg": json.dumps(msg, separators=(",", ":"))})
 
 
 def liveness(via, last_ok, status, now=None, plc="PLC01"):
@@ -1745,8 +1768,13 @@ ON TOPIC "siemens/site01/PLC01/+/PerfMon/Seq" DO
 up to 90 s, `offline` beyond. Its timestamp is the time of the change. The retained `_asset` (model, order number,
 route, endpoint and every leaf) is re-asserted once a minute. With two paths it visits one per run, in turn.
 
+Once a minute it also **registers the PLC** in the historian: `S7PerfDecode.registration` returns the PLC as the
+decoder's `PLCS` declares it (family, model, order number, paths, area, firmware), and the store route hands it to
+`plc_ingest()`, which adds the `plc_registry` row (and the model) only when missing. A new PLC of a known family is its
+LoT and its `PLCS` entry: nothing to change in the database.
+
 **Reads:** the kept `…/lastOk`, the retained `DeviceStatus`. **Writes:** `acme/site01/Automation/PLC01/<path>/DeviceStatus`
-and `_asset` (retained), `…/Transition/decoded`.
+and `_asset` (retained), `…/Transition/decoded`, `…/Register/decoded`.
 
 ```lot
 DEFINE ACTION S7PLC01Liveness
@@ -1764,6 +1792,11 @@ ON EVERY 10 SECONDS DO
         PUBLISH TOPIC "siemens/site01/PLC01/" + {via} + "/Transition/decoded" WITH (GET JSON "transition" IN {live} AS STRING)
     IF (GET JSON "asset" IN {live} AS STRING) != "null" THEN
         PUBLISH TOPIC "acme/site01/Automation/PLC01/" + {via} + "/_asset" WITH (GET JSON "asset" IN {live} AS STRING) RETAIN QOS1
+    CALL PYTHON "S7PerfDecode.registration"
+        WITH ("tick", "PLC01")
+        RETURN AS {reg}
+    IF (GET JSON "reg" IN {reg} AS STRING) != "null" THEN
+        PUBLISH TOPIC "siemens/site01/PLC01/" + {via} + "/Register/decoded" WITH (GET JSON "reg" IN {reg} AS STRING)
 ```
 
 ### The UNS

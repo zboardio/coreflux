@@ -58,6 +58,9 @@ ALTER TABLE plc_registry ADD COLUMN IF NOT EXISTS paths text[], ADD COLUMN IF NO
                          ADD COLUMN IF NOT EXISTS watchdog_ms integer, ADD COLUMN IF NOT EXISTS firmware text;
 UPDATE plc_registry SET paths = '{PN}', area = 'site01' WHERE plc_id = 'acme-site01-plc01' AND paths IS NULL;
 UPDATE plc_registry SET paths = '{PN}', area = 'site01', firmware = 'V2.6' WHERE plc_id = 'acme-site01-plc02' AND paths IS NULL;
+-- Since 2026-11-19 a PLC REGISTERS ITSELF: the broker sends its row once a minute (the decoder's registration(), kind
+-- "Register"), plc_ingest() inserts it when missing and its model into plc_model the same way; nothing here per PLC. The two
+-- rows above predate that and stay. A change to a registered row (area, watchdog_ms …) is an UPDATE: the writer cannot.
 
 -- One per record, first path wins.
 CREATE TABLE IF NOT EXISTS plc_cycle (
@@ -294,6 +297,27 @@ DECLARE
     hdr   jsonb := msg->'header';
     rej   jsonb := coalesce(msg->'rejected', '{}'::jsonb);
 BEGIN
+    IF kind = 'Register' THEN
+        -- The PLC as the broker's decoder declares it (PLCS): added when missing, never overwritten. Its model too, with
+        -- the interfaces unknown until plc_fleet.sql lists the model (that file's rows win on every apply).
+        -- ON CONFLICT DO NOTHING WITHOUT a conflict target: with one, PostgreSQL requires SELECT on the target column, and
+        -- the writer has INSERT only on plc_model (measured 2026-11-19: "permission denied for table plc_model"). Each
+        -- table has one unique key, so nothing else changes. A registration that fails for any other reason must not fail
+        -- the store route's statement: a failed statement there was measured to cost neighbouring messages too, so it
+        -- becomes a WARNING in the database log.
+        BEGIN
+            INSERT INTO plc_model (model, family, interfaces, description)
+            VALUES (msg->>'model', msg->>'family', '{}', 'registered by the broker; not yet listed in plc_fleet.sql')
+            ON CONFLICT DO NOTHING;
+            INSERT INTO plc_registry (plc_id, clock_zone, description, family, model, order_no, paths, area, firmware)
+            VALUES (pid, coalesce(msg->>'clock_zone', 'UTC'), msg->>'description', msg->>'family', msg->>'model', msg->>'order_no',
+                    ARRAY(SELECT jsonb_array_elements_text(msg->'paths')), msg->>'area', msg->>'firmware')
+            ON CONFLICT DO NOTHING;
+        EXCEPTION WHEN OTHERS THEN
+            RAISE WARNING 'plc_ingest: registration of % failed: %', pid, SQLERRM;
+        END;
+        RETURN;
+    END IF;
     IF kind = 'Transition' THEN
         INSERT INTO plc_state_change (ts, plc_id, via, signal, value, prev)
         VALUES (coalesce((msg->>'at')::timestamptz, now()), pid, route, msg->>'signal', msg->>'value', msg->>'prev')
@@ -347,7 +371,7 @@ BEGIN
             ON CONFLICT DO NOTHING;
         END IF;
         IF msg->>'layout' = '2' THEN
-            -- DB_PerfDiag layout 2 (S7-1500): no SZL copies and no diagnostic buffer; the error OBs' slots instead. Its
+            -- DB_PerfDiag layout 2 (S7-1500, S7-1200): no SZL copies and no diagnostic buffer; the error OBs' slots instead. Its
             -- newest call is "newest", not "fault", so the plc_fault insert above never takes it (see plc_ob_call).
             INSERT INTO plc_diag_state (plc_id, via, diag_seq, led, rt_ret, im_status, comm_load_pct, cyc_longest_ms, cyc_shortest_ms,
                                         cyc_last_ms, mod_ret, mod_configured_hex, mod_problem_hex, im0_hex)

@@ -20,6 +20,9 @@ GRANT USAGE ON SCHEMA public TO uns_writer;
 GRANT INSERT ON plc_cycle, plc_arrival, plc_read, plc_boot, plc_boot_end, plc_fault, plc_diag_event, plc_diag_state, plc_health,
                 plc_state_change, plc_ob_call, plc_boot_end_ob TO uns_writer;
 GRANT SELECT ON plc_registry TO uns_writer;
+-- A PLC registers itself (plc_ingest kind "Register", 2026-11-19): INSERT … ON CONFLICT DO NOTHING, so INSERT only — the
+-- writer still cannot change or delete a row of either table.
+GRANT INSERT ON plc_registry, plc_model TO uns_writer;
 
 -- The role Grafana reads as: it can read the PLC's history and do nothing else. Re-running this file sets its password
 -- to the value given again, so the Grafana datasource must be given the same value.

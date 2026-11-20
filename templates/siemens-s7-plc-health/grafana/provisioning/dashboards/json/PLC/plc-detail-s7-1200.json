@@ -1,0 +1,3460 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "One S7-1200 of the historian, chosen by $plc (only this family's PLCs; the fleet's table drills down to the page of each PLC's family): first its state — identity, CPU state, cycle, its paths, health loop, alerts — then what an S7-1200 has: its four error OBs with Siemens' meaning, the LEDs and the kit's own cycle figures (DB_PerfDiag layout 2, family 1200), and the boots; then the health loop, the cycle and the reads. Path-shaped panels follow the PLC's own paths (plc_registry.paths, $path). Trend panels switch to the 5 min / 1 h roll-ups on long ranges (raw 180 days, 5 min 2 years, 1 h forever). Data: the PLC historian (TimescaleDB). One definition rendered once per family. Alerts: this family's rules of rules-plc.yml, shown in the first section; as provisioned, nothing is sent.\n\nGENERATED from the template maintainers' dashboard definitions (one for every PLC family) — do not edit it in this repository, a change is regenerated over; in your own copy, adapt it freely.",
+  "editable": false,
+  "graphTooltip": 1,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "home",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "PLC fleet",
+      "type": "link",
+      "url": "/d/plc-fleet"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "S7-300 detail",
+      "type": "link",
+      "url": "/d/plc-detail-s7-300"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "S7-1500 detail",
+      "type": "link",
+      "url": "/d/plc-detail-s7-1500"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "S7-1200 detail",
+      "type": "link",
+      "url": "/d/plc-detail-s7-1200"
+    }
+  ],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "panels": [],
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The operating mode, DERIVED (plc_cpu_state()): DB_PerfDiag has no mode field on purpose, because OB1 — which would write it — does not run in STOP. RUN = the broker's CpuScanning verdict is true on an online path (its Seq heartbeat every 5 s; false after 10 s frozen: plc_state_change, as the Coreflux Hub shows it). UNREACHABLE = no path online (DeviceStatus stale or offline on every path of this PLC; Path status says which). Online but Seq frozen: STARTUP when a boot stamped less than 5 min ago has no record yet; else STOP (or HALT: the kit cannot tell them apart; the program cannot read an S7-1200's diagnostic buffer). The cause: the error OBs and LEDs under Diagnostics, and TIA. UNKNOWN = a path online but no CpuScanning verdict yet. NO DATA = the broker sends nothing for this PLC (no read, failed or not, in 90 s). Before the first verdict is stored, the state is derived from the reads: a frozen Seq is then proven by a successful PerfMon read that brought no new record.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "-1": {
+                  "color": "orange",
+                  "index": 4,
+                  "text": "UNREACHABLE"
+                },
+                "-2": {
+                  "color": "text",
+                  "index": 5,
+                  "text": "UNKNOWN"
+                },
+                "0": {
+                  "color": "red",
+                  "index": 3,
+                  "text": "STOP"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 2,
+                  "text": "STOP — FAULT"
+                },
+                "2": {
+                  "color": "blue",
+                  "index": 1,
+                  "text": "STARTUP"
+                },
+                "3": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "RUN"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "text",
+                  "index": 0,
+                  "text": "NO DATA"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 3
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "id": 107,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT plc_cpu_state('$plc') AS \"CPU state\"",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU state",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "DeviceStatus on each path this PLC is read over (plc_registry.paths, one value per path, stacked), the broker's verdict (plc_state_change; plc_path_state()): ONLINE = a good read or Seq heartbeat on that path within 20 s, STALE up to 90 s, OFFLINE beyond. With two paths, one OFFLINE and the other ONLINE locates the fault: e.g. MPI = NetLink or MPI bus, PN = PN port or switch; all OFFLINE = CPU power, the shared LAN or the machine running the broker. With one path the table collapses: the path fails, cause unknown. NO DATA = the broker sends nothing. Before the first verdict is stored: a read without error in the last 90 s. Alerts plc_path_down (two or more paths), plc_unreachable (90 s).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 2,
+                  "text": "OFFLINE"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "ONLINE"
+                },
+                "2": {
+                  "color": "orange",
+                  "index": 1,
+                  "text": "STALE"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "text",
+                  "index": 0,
+                  "text": "NO DATA"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "id": 101,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT u.via AS \"path\", plc_path_state('$plc', u.via) AS \"state\" FROM unnest(plc_paths('$plc')) WITH ORDINALITY AS u(via, i) ORDER BY u.i",
+          "refId": "A"
+        }
+      ],
+      "title": "Path status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The broker's CpuScanning verdict on an online path (plc_state_change; plc_scanning()): SCANNING = Seq moved within 10 s; NOT SCANNING = the path answers but Seq is frozen: the CPU is in STOP or HALT, the cause under Diagnostics (the key signal). UNKNOWN = no path online, or no verdict yet. Before the first verdict is stored: a successful PerfMon read in 90 s that brought no new record = NOT SCANNING. Alert plc_not_scanning.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "NOT SCANNING"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "SCANNING"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "orange",
+                  "index": 0,
+                  "text": "UNKNOWN"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "id": 102,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT plc_scanning('$plc') AS \"CpuScanning\"",
+          "refId": "A"
+        }
+      ],
+      "title": "CPU scanning",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Each path's DB_PerfHealth slot as the PLC sees it, one value per path, stacked, the broker's verdict (plc_state_change; plc_health_state()): OK = Life confirmed; STALLED = the broker stopped echoing Life on that path while reads may look healthy (write refused, or the echo action died); CORRUPT = BadEcho rose: a second writer, a replay or a wrong address; NOT JUDGED = the CPU is not scanning (the loop runs in OB1: Life, Age_s and Healthy are frozen in STOP and prove nothing) or no path is online. Before the first verdict is stored: the newest row of the last 90 s (Age_s ≤ 15 s = OK). Alerts plc_health_stalled, plc_health_corrupt.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "OK"
+                },
+                "1": {
+                  "color": "orange",
+                  "index": 1,
+                  "text": "STALLED"
+                },
+                "2": {
+                  "color": "red",
+                  "index": 2,
+                  "text": "CORRUPT"
+                },
+                "3": {
+                  "color": "text",
+                  "index": 3,
+                  "text": "NOT JUDGED"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "text",
+                  "index": 0,
+                  "text": "NO DATA"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "id": 103,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT u.via AS \"slot\", plc_health_state('$plc', u.via) AS \"state\" FROM unnest(plc_paths('$plc')) WITH ORDINALITY AS u(via, i) ORDER BY u.i",
+          "refId": "A"
+        }
+      ],
+      "title": "Health loop",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "BootDate/BootTime of the newest boot DB_PerfMon reported (the startup OB stamps it, by the CPU's clock). A boot you did not expect: Boots and how they ended says how the previous one ended.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "dateTimeFromNow"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "id": 104,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT extract(epoch FROM max(ts_boot)) * 1000 AS \"Last boot\" FROM plc_boot WHERE plc_id = '$plc'",
+          "refId": "A"
+        }
+      ],
+      "title": "Last boot",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "DB_PerfMon records missing in the time range: Seq gaps within one boot, i.e. a reader outage longer than the ring (120 records = 2 min at a 1 s window). Exact to the record, over the raw records (kept 180 days); the gaps are listed under Reads. Alert plc_records_lost.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "id": 106,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(sum(missing), 0) AS \"lost\" FROM (SELECT boot_date, boot_time, seq AS gap_after, next_seq - seq - 1 AS missing FROM (SELECT boot_date, boot_time, seq, lead(seq) OVER (PARTITION BY boot_date, boot_time ORDER BY seq) AS next_seq FROM plc_cycle WHERE plc_id = '$plc' AND $__timeFilter(ts_plc)) s WHERE next_seq - seq > 1) g",
+          "refId": "A"
+        }
+      ],
+      "title": "Records lost",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "What this PLC is: model, family, area, the paths it is read over, order number, firmware and watchdog (its maximum cycle time), from plc_registry and plc_model. The kit reads no identity on this family yet (an S7-1500 on FW V2.6 has no Get_IM_Data; I&M0 is reserved in DB_PerfDiag): these are the registry's.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "watchdog"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "paths"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 108,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT r.model AS \"model\", coalesce(r.family, m.family) AS \"family\", r.area AS \"area\", array_to_string(r.paths, ' + ') AS \"paths\", r.order_no AS \"order number\", plc_firmware_of(r.plc_id) AS \"firmware\", plc_watchdog_ms('$plc') AS \"watchdog\" FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE r.plc_id = '$plc'",
+          "refId": "A"
+        }
+      ],
+      "title": "PLC identity",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The newest DB_PerfMon window (1 s): the average OB1 cycle. Frozen at the last window while the CPU is not in RUN (CPU state). Trend and histogram: Cycle.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 9
+      },
+      "id": 111,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT cyc_avg_ms AS \"avg\" FROM plc_cycle WHERE plc_id = '$plc' AND ts_plc > now() - interval '2 days' ORDER BY ts_plc DESC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycle avg now",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The newest DB_PerfMon window (1 s): the longest OB1 cycle in it. Its share of the watchdog: the next tile. Frozen at the last window while the CPU is not in RUN.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 9
+      },
+      "id": 114,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT cyc_max_ms AS \"max\" FROM plc_cycle WHERE plc_id = '$plc' AND ts_plc > now() - interval '2 days' ORDER BY ts_plc DESC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycle max now",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The longest cycle of the newest window as a share of this PLC's watchdog: yellow from 50 %, red from 80 % (alert plc_cycle_max_high at 80 % over 5 min). The watchdog is this PLC's maximum cycle time: plc_registry.watchdog_ms, else its model's preset (plc_model; 150 ms on the S7-300 and S7-1500), plc_watchdog_ms().",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 9
+      },
+      "id": 115,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT round((cyc_max_ms / plc_watchdog_ms('$plc') * 100)::numeric, 1) AS \"of watchdog\" FROM plc_cycle WHERE plc_id = '$plc' AND ts_plc > now() - interval '2 days' ORDER BY ts_plc DESC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Now % watchdog",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The longest cycle since the current boot, over its records (the boot the historian stored last: plc_boot.first_seen). Not DB_PerfMon's LifeMax header field: plc_ingest does not store it. The shortest cycle per window is in Cycle (410). A boot older than the raw retention (180 days) shows its retained part only.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 9
+      },
+      "id": 112,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT max(c.cyc_max_ms) AS \"max\" FROM plc_cycle c JOIN (SELECT boot_date, boot_time, ts_boot FROM plc_boot WHERE plc_id = '$plc' ORDER BY first_seen DESC NULLS LAST, boot_date DESC, boot_time DESC LIMIT 1) b USING (boot_date, boot_time) WHERE c.plc_id = '$plc' AND c.ts_plc >= coalesce(b.ts_boot, '-infinity') - interval '1 day'",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycle max boot",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The longest cycle since the current boot as a share of this PLC's watchdog: yellow from 50 %, red from 80 %. The watchdog is this PLC's maximum cycle time: plc_registry.watchdog_ms, else its model's preset (plc_model; 150 ms on the S7-300 and S7-1500), plc_watchdog_ms().",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 9
+      },
+      "id": 116,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT round((max(c.cyc_max_ms) / plc_watchdog_ms('$plc') * 100)::numeric, 1) AS \"of watchdog\" FROM plc_cycle c JOIN (SELECT boot_date, boot_time, ts_boot FROM plc_boot WHERE plc_id = '$plc' ORDER BY first_seen DESC NULLS LAST, boot_date DESC, boot_time DESC LIMIT 1) b USING (boot_date, boot_time) WHERE c.plc_id = '$plc' AND c.ts_plc >= coalesce(b.ts_boot, '-infinity') - interval '1 day'",
+          "refId": "A"
+        }
+      ],
+      "title": "Boot % watchdog",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Read time − PLC stamp, the smallest over the records that arrived in the last 10 min: the newest record of a read is at most one window old, so this is the CPU clock's offset, expected at 0–1 s. Hours = the CPU clock is not on UTC (set it, or plc_registry.clock_zone; an S7-1500's RD_SYS_T is UTC). Alert plc_clock_skew at ±10 s; trend under Health loop.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": -10
+              },
+              {
+                "color": "green",
+                "value": -2
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 9
+      },
+      "id": 105,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT min(extract(epoch FROM ts_received - ts_plc)) AS \"skew\" FROM plc_cycle WHERE plc_id = '$plc' AND ts_plc > now() - interval '2 days' AND ts_received > now() - interval '10 minutes'",
+          "refId": "A"
+        }
+      ],
+      "title": "Clock skew",
+      "type": "stat"
+    },
+    {
+      "description": "The S7-1200 rules of rules-plc.yml (the ones that link to this page) with their current state, every S7-1200 in the historian. As provisioned, the notification policy mutes every alert: the state shows here and nothing is sent. Each rule links to its panel here, with the PLC selected.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "id": 110,
+      "options": {
+        "alertInstanceLabelFilter": "",
+        "alertName": "",
+        "dashboardAlerts": true,
+        "groupBy": [],
+        "groupMode": "default",
+        "maxItems": 20,
+        "showInstances": true,
+        "sortOrder": 1,
+        "stateFilter": {
+          "error": true,
+          "firing": true,
+          "noData": true,
+          "normal": true,
+          "pending": true,
+          "recovering": true
+        },
+        "viewMode": "list"
+      },
+      "title": "PLC alerts — state on this Grafana",
+      "type": "alertlist"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Every change of CpuScanning, DeviceStatus and Health per path, as the broker published it to the UNS (plc_state_change, by the broker's clock, kept forever): when the CPU stopped scanning, when a path went stale and offline, when the health loop stalled, was corrupted or could not be judged (unknown: the CPU not scanning). `from` — = the first verdict after a broker start. This is what the tiles above show, with the time each change happened.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "broker time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "path"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "signal"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "from"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "to"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "id": 113,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ts AS \"broker time\", via AS \"path\", signal, coalesce(prev, '—') AS \"from\", value AS \"to\" FROM plc_state_change WHERE plc_id = '$plc' AND $__timeFilter(ts) ORDER BY ts DESC LIMIT 200",
+          "refId": "A"
+        }
+      ],
+      "title": "State changes — the broker's verdicts",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "id": 600,
+      "panels": [],
+      "title": "Diagnostics — error OBs, LEDs",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The CPU's three LEDs at the newest DB_PerfDiag read (layout 2, the LED instruction). LED's RET_VAL as the kit stores it (plc_diag_state.led): OFF, ON in colour 1 or 2, FLASHING in colour 1 or 2, ALTERNATING; negative = the CPU refused the call. RUN/STOP: colour 1 green = RUN, 2 yellow = STOP; ERROR: red; MAINT: yellow. The PROGRAM reads the LEDs, so while the CPU is not scanning (CPU state) the stored values are the last ones of RUN and are not shown: RUN/STOP then says STOP when the derived CPU state is STOP (derived, not read), ERROR and MAINT say NOT READ.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RUN/STOP"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "1": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "OFF"
+                      },
+                      "100": {
+                        "color": "text",
+                        "index": 6,
+                        "text": "NOT READ"
+                      },
+                      "101": {
+                        "color": "yellow",
+                        "index": 7,
+                        "text": "STOP (derived)"
+                      },
+                      "2": {
+                        "color": "green",
+                        "index": 1,
+                        "text": "ON RUN"
+                      },
+                      "3": {
+                        "color": "yellow",
+                        "index": 2,
+                        "text": "ON STOP"
+                      },
+                      "4": {
+                        "color": "green",
+                        "index": 3,
+                        "text": "FLASH RUN"
+                      },
+                      "5": {
+                        "color": "yellow",
+                        "index": 4,
+                        "text": "FLASH STOP"
+                      },
+                      "6": {
+                        "color": "orange",
+                        "index": 5,
+                        "text": "ALTERNATING"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "—"
+                      }
+                    },
+                    "type": "special"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ERROR"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "1": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "OFF"
+                      },
+                      "100": {
+                        "color": "text",
+                        "index": 6,
+                        "text": "NOT READ"
+                      },
+                      "101": {
+                        "color": "yellow",
+                        "index": 7,
+                        "text": "STOP (derived)"
+                      },
+                      "2": {
+                        "color": "red",
+                        "index": 1,
+                        "text": "ON ERROR"
+                      },
+                      "3": {
+                        "color": "red",
+                        "index": 2,
+                        "text": "ON ERROR"
+                      },
+                      "4": {
+                        "color": "red",
+                        "index": 3,
+                        "text": "FLASH ERROR"
+                      },
+                      "5": {
+                        "color": "red",
+                        "index": 4,
+                        "text": "FLASH ERROR"
+                      },
+                      "6": {
+                        "color": "orange",
+                        "index": 5,
+                        "text": "ALTERNATING"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "—"
+                      }
+                    },
+                    "type": "special"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MAINT"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "1": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "OFF"
+                      },
+                      "100": {
+                        "color": "text",
+                        "index": 6,
+                        "text": "NOT READ"
+                      },
+                      "101": {
+                        "color": "yellow",
+                        "index": 7,
+                        "text": "STOP (derived)"
+                      },
+                      "2": {
+                        "color": "yellow",
+                        "index": 1,
+                        "text": "ON MAINT"
+                      },
+                      "3": {
+                        "color": "yellow",
+                        "index": 2,
+                        "text": "ON MAINT"
+                      },
+                      "4": {
+                        "color": "yellow",
+                        "index": 3,
+                        "text": "FLASH MAINT"
+                      },
+                      "5": {
+                        "color": "yellow",
+                        "index": 4,
+                        "text": "FLASH MAINT"
+                      },
+                      "6": {
+                        "color": "orange",
+                        "index": 5,
+                        "text": "ALTERNATING"
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "color": "text",
+                        "index": 0,
+                        "text": "—"
+                      }
+                    },
+                    "type": "special"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 22
+      },
+      "id": 601,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE WHEN s.scan = 1 THEN d.led[1] WHEN plc_cpu_state('$plc') IN (0, 1) THEN 101 ELSE 100 END AS \"RUN/STOP\", CASE WHEN s.scan = 1 THEN d.led[2] ELSE 100 END AS \"ERROR\", CASE WHEN s.scan = 1 THEN d.led[3] ELSE 100 END AS \"MAINT\" FROM (SELECT led FROM plc_diag_state WHERE plc_id = '$plc' AND led IS NOT NULL AND ts > now() - interval '1 day' ORDER BY ts DESC LIMIT 1) d CROSS JOIN (SELECT plc_scanning('$plc') AS scan OFFSET 0) s",
+          "refId": "A"
+        }
+      ],
+      "title": "LEDs",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The longest and shortest cycle since the boot, as the kit's closed windows saw them, and the cycle that ended at the newest LED read (an S7-1200 has no RT_INFO; frozen at the last values of RUN while the CPU is not scanning). The window figures of DB_PerfMon are under Cycle.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [
+            {
+              "options": {
+                "match": "null",
+                "result": {
+                  "color": "text",
+                  "index": 0,
+                  "text": "—"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 22
+      },
+      "id": 603,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT cyc_longest_ms AS \"longest\", cyc_shortest_ms AS \"shortest\", cyc_last_ms AS \"last\" FROM plc_diag_state WHERE plc_id = '$plc' AND led IS NOT NULL AND ts > now() - interval '1 day' ORDER BY ts DESC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycle since boot",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "plc_faults_24h(): the calls of the four error OBs (80, 82, 83, 86) in the last 24 h, from the count each newest call carries. Not faults as such: a module fault can call OB82 once per channel and change. The fleet's column of the same name.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 22
+      },
+      "id": 604,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT plc_faults_24h('$plc') AS \"calls\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Error-OB calls 24 h",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "DB_PerfDiag layout 2: one slot per error OB — OB80 time error, OB82 diagnostic interrupt, OB83 pull/plug, OB86 rack failure (an S7-1200 has no OB121/OB122) — the newest call the reads saw: its stamp (RD_SYS_T, UTC), the calls since the boot, the start information with Siemens' meaning of each code (plc_ob_call_text); the meanings are the S7-1500 manual's, whose start information the S7-1200's error OBs share. Whatever the time range; kept forever. An OB never called since the kit ran has no row. Alert plc_fault_event links here.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "newest call"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OB"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "code"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "string"
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "calls since boot"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "meaning"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 320
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "path"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 610,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT o.ts_plc AS \"newest call\", o.ob AS \"OB\", o.calls AS \"calls since boot\", o.fault_code AS \"code\", coalesce(o.fault_text, CASE WHEN o.ob_nr = 82 THEN 'diagnostic interrupt' END, '(no meaning listed)') AS \"meaning\", o.details AS \"details\", o.via AS \"path\" FROM unnest('{80,82,83,86}'::smallint[]) AS k(ob), LATERAL (SELECT * FROM plc_ob_call_text t WHERE t.plc_id = '$plc' AND t.ob_nr = k.ob ORDER BY t.ts_plc DESC LIMIT 1) o ORDER BY o.ts_plc DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Error OBs — the newest call of each",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The rise of each error OB's call count between two newest calls the reads saw, per second (a drop = a new boot, left out). A busy OB gives one point per read, an idle one none. From the raw calls (plc_ob_call, kept forever, no roll-up: a long range reads every row).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 611,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts_plc, $__interval), 'OB' || ob_nr AS metric, max(rate) AS value FROM ( SELECT ts_plc, ob_nr, (calls - lag(calls) OVER w) / nullif(extract(epoch FROM ts_plc - lag(ts_plc) OVER w), 0) AS rate FROM plc_ob_call WHERE plc_id = '$plc' AND $__timeFilter(ts_plc) WINDOW w AS (PARTITION BY ob_nr ORDER BY ts_plc)) s WHERE rate >= 0 GROUP BY 1, 2 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Error-OB calls per second",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The newest layout-2 read per path. `led` = RUN/STOP, ERROR, MAINT (LED's RET_VAL, LEDs above); `RT_INFO ret` = -1 0 0 0 and comm load -1 on an S7-1200 (no RT_INFO: the cycle figures are the kit's own); `modules ret` and the IM status are reserved by the kit (zero until it reads them).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "read"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "path"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "longest"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "shortest"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "comm load"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "IM status"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "string"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "id": 612,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT DISTINCT ON (via) ts AS \"read\", via AS \"path\", diag_seq, array_to_string(led, ' ') AS \"led\", array_to_string(rt_ret, ' ') AS \"RT_INFO ret\", comm_load_pct AS \"comm load\", cyc_longest_ms AS \"longest\", cyc_shortest_ms AS \"shortest\", cyc_last_ms AS \"last\", mod_ret AS \"modules ret\", '16#' || upper(to_hex(im_status)) AS \"IM status\" FROM plc_diag_state WHERE plc_id = '$plc' AND via IN ($path) AND led IS NOT NULL AND ts > now() - interval '1 day' ORDER BY via, ts DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "DB_PerfDiag layout 2 per path — LEDs, RT_INFO, modules",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "id": 200,
+      "panels": [],
+      "title": "Boots",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "One row per boot (DB_PerfMon's boot id), newest first BY ARRIVAL: `first seen` = when the historian first stored the boot (empty for a boot stored before the historian kept that column; such boots follow, by their PLC stamp), so a boot stamped by a CPU clock that was not set yet (an S7-1500 starts at 2012-01-01) cannot hide the current one. Its end as the NEXT boot's startup OB kept it (DB_PerfDiag PrevBoot*): the last Seq and the error-OB totals of that boot — all four error OBs (OB80/82/86 from plc_boot_end, OB83 from plc_boot_end_ob). Empty end = the boot is the current one, or ended before the kit ran. Kept forever.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "boot (PLC clock)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "first seen"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OB80"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OB82"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OB86"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OB83"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
+      "id": 230,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT b.ts_boot AS \"boot (PLC clock)\", b.first_seen AS \"first seen\", b.restart_count AS \"restarts\", e.last_seq AS \"last seq\", e.ob80 AS \"OB80\", e.ob82 AS \"OB82\", e.ob86 AS \"OB86\", (SELECT o.calls FROM plc_boot_end_ob o WHERE o.plc_id = b.plc_id AND o.boot_date = b.boot_date AND o.boot_time = b.boot_time AND o.ob_nr = 83) AS \"OB83\", array_to_string(b.edges_ms, ' ') AS \"edges ms\" FROM plc_boot b LEFT JOIN plc_boot_end e USING (plc_id, boot_date, boot_time) WHERE b.plc_id = '$plc' ORDER BY b.first_seen DESC NULLS LAST, b.boot_date DESC, b.boot_time DESC LIMIT 20",
+          "refId": "A"
+        }
+      ],
+      "title": "Boots and how they ended",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 59
+      },
+      "id": 300,
+      "panels": [],
+      "title": "Health loop",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Seconds since the PLC last saw its Life value echoed on that path, the max of every read, one line per path of this PLC. 0–1 = the circle closes, writes included. Rising while reads succeed = writes refused or the broker's echo action died. Alert plc_health_stalled at 15 s. Range-aware: raw below a 1 h interval, the 1 h roll-up beyond (raw kept 180 days, the roll-up forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "links": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 15
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 60
+      },
+      "id": 310,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts, $__interval), slot AS metric, max(age_s) AS value FROM plc_health WHERE plc_id = '$plc' AND $__timeFilter(ts) AND ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days') AND slot IN ($path) GROUP BY 1, 2) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), slot AS metric, max(age_s_max) AS value FROM plc_health_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days')) AND slot IN ($path) GROUP BY 1, 2)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Confirmation age per path (Age_s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The PLC's own counters since boot, per path. Losses = times Age_s passed the limit (the PLC lost its reader, by its own clock: LastLoss*). Bad echo = a value that was neither the current nor the previous Life: a second writer, a replay, a wrong address. Alert plc_health_corrupt when bad echo rises. Range-aware: raw below a 1 h interval, the 1 h roll-up beyond (raw kept 180 days, the roll-up forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 68
+      },
+      "id": 311,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts, $__interval), slot || ' losses' AS metric, max(losses) AS value FROM plc_health WHERE plc_id = '$plc' AND $__timeFilter(ts) AND ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days') AND slot IN ($path) GROUP BY 1, 2) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), slot || ' losses' AS metric, max(losses_max) AS value FROM plc_health_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days')) AND slot IN ($path) GROUP BY 1, 2) UNION ALL (SELECT $__timeGroupAlias(ts, $__interval), slot || ' bad echo' AS metric, max(bad_echo) AS value FROM plc_health WHERE plc_id = '$plc' AND $__timeFilter(ts) AND ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days') AND slot IN ($path) GROUP BY 1, 2) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), slot || ' bad echo' AS metric, max(bad_echo_max) AS value FROM plc_health_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days')) AND slot IN ($path) GROUP BY 1, 2)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Losses and bad echoes per path",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Per bucket, the record that arrived soonest after its stamp: the CPU clock's offset plus at most one window. It trends the clock's drift and catches a clock that was reset. Alert plc_clock_skew beyond ±10 s. Range-aware: raw records below a 5 min interval, plc_cycle_5m below 1 h, plc_cycle_1h beyond (raw kept 180 days, 5 min 2 years, 1 h forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 76
+      },
+      "id": 313,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts_plc, $__interval), min(extract(epoch FROM ts_received - ts_plc)) AS \"skew\" FROM plc_cycle WHERE plc_id = '$plc' AND $__timeFilter(ts_plc) AND ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), min(skew_min_s) AS \"skew\" FROM plc_cycle_5m WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days') GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), min(skew_min_s) AS \"skew\" FROM plc_cycle_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND NOT (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days')) GROUP BY 1)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Clock skew — read time minus PLC stamp",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "plc_arrival: one row per fact per path (7-day retention, so a longer range counts the last 7 days), over the paths this PLC is read over. With every path up, every record and diagnostic entry is seen on each, byte-identical; `content differs` must stay 0. A few `not on every path` at the newest edge are records another path has not read yet; many = a path was down (Reads per path says which). A PLC read over one path has nothing to compare: one row says so.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "content differs"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 76
+      },
+      "id": 320,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH c AS (SELECT plc_paths('$plc') AS paths), f AS (SELECT kind, fact_key, ts_plc, count(DISTINCT via) AS vias, count(DISTINCT fact_hash) AS hashes FROM plc_arrival, c WHERE plc_id = '$plc' AND via = ANY (c.paths) AND $__timeFilter(ts_plc) GROUP BY 1, 2, 3) SELECT * FROM ( (SELECT f.kind, count(*) FILTER (WHERE f.vias = cardinality(c.paths)) AS \"on every path\", count(*) FILTER (WHERE f.vias < cardinality(c.paths)) AS \"not on every path\", count(*) FILTER (WHERE f.hashes > 1) AS \"content differs\" FROM f, c WHERE cardinality(c.paths) > 1 GROUP BY f.kind) UNION ALL (SELECT 'one path (' || coalesce(array_to_string(c.paths, ''), '') || '): nothing to compare', NULL, NULL, NULL FROM c WHERE cardinality(c.paths) < 2)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Paths, the same facts",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 84
+      },
+      "id": 400,
+      "panels": [],
+      "title": "Cycle",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "From DB_PerfMon's ring: the CPU measures every OB1 cycle (1 ms resolution on an S7-300) and closes a record per window. Dashed line = 80 % of this PLC's watchdog (query B, drawn as a threshold, not a series). The watchdog is this PLC's maximum cycle time: plc_registry.watchdog_ms, else its model's preset (plc_model; 150 ms on the S7-300 and S7-1500), plc_watchdog_ms(). Alert plc_cycle_max_high. Range-aware: raw records below a 5 min interval, plc_cycle_5m below 1 h, plc_cycle_1h beyond (raw kept 180 days, 5 min 2 years, 1 h forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "links": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 85
+      },
+      "id": 410,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts_plc, $__interval), min(cyc_min_ms) AS \"min\", sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0) AS \"avg\", max(cyc_max_ms) AS \"max\" FROM plc_cycle WHERE plc_id = '$plc' AND $__timeFilter(ts_plc) AND ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), min(cyc_min_ms) AS \"min\", sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0) AS \"avg\", max(cyc_max_ms) AS \"max\" FROM plc_cycle_5m WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days') GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), min(cyc_min_ms) AS \"min\", sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0) AS \"avg\", max(cyc_max_ms) AS \"max\" FROM plc_cycle_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND NOT (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days')) GROUP BY 1)) t ORDER BY 1",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 0.8 * plc_watchdog_ms('$plc') AS \"limit\"",
+          "refId": "B"
+        }
+      ],
+      "title": "Cycle time — min / avg / max per window",
+      "transformations": [
+        {
+          "id": "configFromData",
+          "options": {
+            "configRefId": "B",
+            "mappings": [
+              {
+                "fieldName": "limit",
+                "handlerKey": "threshold1"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "OB1 cycles per second of PLC time. The inverse of the average cycle; a drop is load (or the minimum cycle time padding it). Range-aware: raw records below a 5 min interval, plc_cycle_5m below 1 h, plc_cycle_1h beyond (raw kept 180 days, 5 min 2 years, 1 h forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 93
+      },
+      "id": 411,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts_plc, $__interval), sum(cycles) * 1000.0 / nullif(sum(window_ms), 0) AS \"cycles/s\" FROM plc_cycle WHERE plc_id = '$plc' AND $__timeFilter(ts_plc) AND ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), sum(cycles) * 1000.0 / nullif(sum(window_ms), 0) AS \"cycles/s\" FROM plc_cycle_5m WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days') GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), sum(cycles) * 1000.0 / nullif(sum(window_ms), 0) AS \"cycles/s\" FROM plc_cycle_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND NOT (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days')) GROUP BY 1)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycles per second",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Cycles per bucket in the newest record in the range (raw records, kept 180 days). Bucket edges are the ones the CPU booted with (plc_boot.edges_ms, set once per PLC before any comparison).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "lineWidth": 1
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 101
+      },
+      "id": 420,
+      "options": {
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "bucket",
+        "xTickLabelRotation": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH e AS (SELECT edges_ms FROM plc_boot WHERE plc_id = '$plc' ORDER BY first_seen DESC NULLS LAST, boot_date DESC, boot_time DESC LIMIT 1), r AS (SELECT hist FROM plc_cycle WHERE plc_id = '$plc' AND $__timeFilter(ts_plc) ORDER BY ts_plc DESC LIMIT 1) SELECT CASE WHEN i = 1 THEN '< ' || e.edges_ms[1] WHEN i = 8 THEN '≥ ' || e.edges_ms[7] ELSE e.edges_ms[i - 1] || '–' || e.edges_ms[i] END || ' ms' AS bucket, r.hist[i] AS \"cycles\" FROM generate_series(1, 8) AS i CROSS JOIN r LEFT JOIN e ON true ORDER BY i",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycle-time histogram — newest window",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Every cycle in the range by bucket, log scale: the long tail is what matters. Percentiles are exact to the bucket. The edges are the current boot's; a range across a change of edges mixes them. Range-aware: raw records below a 5 min interval, plc_cycle_5m below 1 h, plc_cycle_1h beyond (raw kept 180 days, 5 min 2 years, 1 h forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "log": 10,
+              "type": "log"
+            }
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 101
+      },
+      "id": 421,
+      "options": {
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "bucket",
+        "xTickLabelRotation": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH e AS (SELECT edges_ms FROM plc_boot WHERE plc_id = '$plc' ORDER BY first_seen DESC NULLS LAST, boot_date DESC, boot_time DESC LIMIT 1), h AS (SELECT i, sum(n) AS n FROM ( SELECT i, sum(hist[i]) AS n FROM plc_cycle, generate_series(1, 8) AS i WHERE plc_id = '$plc' AND $__timeFilter(ts_plc) AND ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') GROUP BY i UNION ALL SELECT u.i, u.n FROM (SELECT ARRAY[sum(h0), sum(h1), sum(h2), sum(h3), sum(h4), sum(h5), sum(h6), sum(h7)] AS a FROM plc_cycle_5m WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days')) x, unnest(x.a) WITH ORDINALITY AS u(n, i) UNION ALL SELECT u.i, u.n FROM (SELECT ARRAY[sum(h0), sum(h1), sum(h2), sum(h3), sum(h4), sum(h5), sum(h6), sum(h7)] AS a FROM plc_cycle_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND NOT (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days'))) x, unnest(x.a) WITH ORDINALITY AS u(n, i)) s GROUP BY i) SELECT CASE WHEN h.i = 1 THEN '< ' || e.edges_ms[1] WHEN h.i = 8 THEN '≥ ' || e.edges_ms[7] ELSE e.edges_ms[h.i - 1] || '–' || e.edges_ms[h.i] END || ' ms' AS bucket, h.n AS \"cycles\" FROM h LEFT JOIN e ON true ORDER BY h.i",
+          "refId": "A"
+        }
+      ],
+      "title": "Cycle-time histogram — summed over the range",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Per window from the ring. OB82/OB86 are counted per boot only (DB_PerfMon's header totals, kept by the startup OB: Boots and how they ended) — a per-window figure is not in the ring; the other error OBs: Diagnostics (Error OBs, Error-OB calls per second). Alert plc_fault_event (OB80 in the last 10 min). Range-aware: raw records below a 5 min interval, plc_cycle_5m below 1 h, plc_cycle_1h beyond (raw kept 180 days, 5 min 2 years, 1 h forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 109
+      },
+      "id": 430,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts_plc, $__interval), sum(ob80_cnt) AS \"OB80 calls\", count(*) FILTER (WHERE flags & 2 > 0) AS \"windows with OB80 (bit 1)\", count(*) FILTER (WHERE flags & 1 > 0) AS \"first window after boot (bit 0)\" FROM plc_cycle WHERE plc_id = '$plc' AND $__timeFilter(ts_plc) AND ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), sum(ob80) AS \"OB80 calls\", sum(win_ob80) AS \"windows with OB80 (bit 1)\", sum(win_first) AS \"first window after boot (bit 0)\" FROM plc_cycle_5m WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days') GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), sum(ob80) AS \"OB80 calls\", sum(win_ob80) AS \"windows with OB80 (bit 1)\", sum(win_first) AS \"first window after boot (bit 0)\" FROM plc_cycle_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND NOT (NOT ($__interval_ms < 300000 AND $__timeFrom() > now() - interval '179 days') AND $__interval_ms < 3600000 AND $__timeFrom() > now() - interval '729 days')) GROUP BY 1)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "OB80 calls and window flags",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 117
+      },
+      "id": 500,
+      "panels": [],
+      "title": "Reads",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Ask → answer of each whole-DB read, as the broker's decoder timed it, per path of this PLC. Measured on the S7-300: DB_PerfMon 1.5 s over MPI, 0.3 s over PN. A rise on one path only = that path's link. Range-aware: raw below a 1 h interval, the 1 h roll-up beyond (raw kept 180 days, the roll-up forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "min": 0,
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 118
+      },
+      "id": 510,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts, $__interval), via || ' / ' || db_name AS metric, avg(read_ms) AS value FROM plc_read WHERE plc_id = '$plc' AND $__timeFilter(ts) AND ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days') AND via IN ($path) AND error IS NULL GROUP BY 1, 2) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), via || ' / ' || db_name AS metric, sum(read_ms_avg * (reads - errors)) / nullif(sum(reads - errors), 0) AS value FROM plc_read_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days')) AND via IN ($path) GROUP BY 1, 2)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Read duration per path and DB",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "What polling costs the link: every read's bytes over the bucket. Constant by design (fixed DBs, fixed rate) — keep it so across any comparison. Range-aware: raw below a 1 h interval, the 1 h roll-up beyond (raw kept 180 days, the roll-up forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "min": 0,
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 126
+      },
+      "id": 511,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts, $__interval), via AS metric, sum(bytes) * 1000.0 / $__interval_ms AS value FROM plc_read WHERE plc_id = '$plc' AND $__timeFilter(ts) AND ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days') AND via IN ($path) GROUP BY 1, 2) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), via AS metric, sum(bytes) * 1000.0 / greatest($__interval_ms, 3600000) AS value FROM plc_read_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days')) AND via IN ($path) GROUP BY 1, 2)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Bytes read per second, per path",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Reads per bucket, split by outcome, per path of this PLC. A path whose `ok` line drops to zero while another carries on is a path fault (alert plc_path_down); every path = plc_unreachable. Range-aware: raw below a 1 h interval, the 1 h roll-up beyond (raw kept 180 days, the roll-up forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 134
+      },
+      "id": 512,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts, $__interval), via || CASE WHEN error IS NULL THEN ' ok' ELSE ' failed' END AS metric, count(*) AS value FROM plc_read WHERE plc_id = '$plc' AND via IN ($path) AND $__timeFilter(ts) AND ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days') GROUP BY 1, 2) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), via || ' ok' AS metric, sum(reads - errors) AS value FROM plc_read_1h WHERE plc_id = '$plc' AND via IN ($path) AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days')) GROUP BY 1, 2) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), via || ' failed' AS metric, sum(errors) AS value FROM plc_read_1h WHERE plc_id = '$plc' AND via IN ($path) AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days')) GROUP BY 1, 2 HAVING sum(errors) > 0)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Reads per path — ok and failed",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Slots the decoder refused per bucket. After a warm restart, 'newer than header' carries the previous boot's slots until they are overwritten; 'bad stamp' = a CPU clock value that is not a date. Empty slots are not shown. Range-aware: raw below a 1 h interval, the 1 h roll-up beyond (raw kept 180 days, the roll-up forever).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "links": [],
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 142
+      },
+      "id": 513,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true,
+          "width": 480
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT * FROM ((SELECT $__timeGroupAlias(ts, $__interval), sum(rej_future) AS \"newer than header\", sum(rej_slot) AS \"wrong slot\", sum(rej_old) AS \"about to be overwritten\", sum(rej_stamp) AS \"bad stamp\" FROM plc_read WHERE plc_id = '$plc' AND $__timeFilter(ts) AND ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days') AND via IN ($path) AND db_name = 'PerfMon' GROUP BY 1) UNION ALL (SELECT $__timeGroupAlias(bucket, $__interval), sum(rej_future) AS \"newer than header\", sum(rej_slot) AS \"wrong slot\", sum(rej_old) AS \"about to be overwritten\", sum(rej_stamp) AS \"bad stamp\" FROM plc_read_1h WHERE plc_id = '$plc' AND $__timeFilter(bucket) AND (NOT ($__interval_ms < 3600000 AND $__timeFrom() > now() - interval '179 days')) AND via IN ($path) AND db_name = 'PerfMon' GROUP BY 1)) t ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "title": "Records refused by the read contract",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "The connector's or the decoder's own words. 'not connected' = the route lost the PLC on that path; 'layout' = a DB with another version or size than the decoder expects. Raw reads, kept 180 days.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "read_ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "path"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DB"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 150
+      },
+      "id": 520,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ts AS \"time\", via AS \"path\", db_name AS \"DB\", error, read_ms FROM plc_read WHERE plc_id = '$plc' AND via IN ($path) AND error IS NOT NULL AND $__timeFilter(ts) ORDER BY ts DESC LIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed reads — newest",
+      "transformations": [],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "timescale-edge"
+      },
+      "description": "Each gap within one boot: the records after `after seq` that no read delivered, because the reader was gone for longer than the ring holds. Raw records, kept 180 days. Alert plc_records_lost.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "filterable": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "missing"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 150
+      },
+      "id": 521,
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "sortBy": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "timescale-edge"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT boot_date || '/' || boot_time AS \"boot\", gap_after AS \"after seq\", missing FROM (SELECT boot_date, boot_time, seq AS gap_after, next_seq - seq - 1 AS missing FROM (SELECT boot_date, boot_time, seq, lead(seq) OVER (PARTITION BY boot_date, boot_time ORDER BY seq) AS next_seq FROM plc_cycle WHERE plc_id = '$plc' AND $__timeFilter(ts_plc)) s WHERE next_seq - seq > 1) g ORDER BY boot_date DESC, boot_time DESC, gap_after DESC LIMIT 50",
+          "refId": "A"
+        }
+      ],
+      "title": "Records lost — gaps in Seq",
+      "transformations": [],
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "generated",
+    "plc",
+    "plc-detail",
+    "s7-1200",
+    "siemens"
+  ],
+  "templating": {
+    "list": [
+      {
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescale-edge"
+        },
+        "definition": "SELECT plc_id AS __value, plc_id || coalesce(' · ' || model, '') AS __text FROM plc_registry WHERE plc_family(plc_id) = 's7-1200' ORDER BY plc_id",
+        "includeAll": false,
+        "label": "PLC",
+        "multi": false,
+        "name": "plc",
+        "query": "SELECT plc_id AS __value, plc_id || coalesce(' · ' || model, '') AS __text FROM plc_registry WHERE plc_family(plc_id) = 's7-1200' ORDER BY plc_id",
+        "refresh": 1,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "timescale-edge"
+        },
+        "definition": "SELECT via FROM (SELECT u.via, u.i FROM unnest(plc_paths('$plc')) WITH ORDINALITY AS u(via, i) UNION ALL SELECT '(no path registered)', 0 WHERE cardinality(plc_paths('$plc')) = 0) s ORDER BY i",
+        "includeAll": true,
+        "label": "Path",
+        "multi": true,
+        "name": "path",
+        "query": "SELECT via FROM (SELECT u.via, u.i FROM unnest(plc_paths('$plc')) WITH ORDINALITY AS u(via, i) UNION ALL SELECT '(no path registered)', 0 WHERE cardinality(plc_paths('$plc')) = 0) s ORDER BY i",
+        "refresh": 1,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "PLC detail — S7-1200",
+  "uid": "plc-detail-s7-1200",
+  "version": 1
+}

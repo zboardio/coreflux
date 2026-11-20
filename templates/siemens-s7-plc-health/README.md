@@ -5,8 +5,8 @@ connector, stored in TimescaleDB and shown in Grafana. A small set of blocks in 
 every error-OB call and closes one record a second. The broker reads those records whole, so nothing is lost between two
 polls, and the PLC writes a health counter that the broker echoes back on each path.
 
-**Status:** the PLC side runs on a real S7-300 and on a real S7-1500 (firmware V2.6), each read by a Coreflux 2.22
-broker into a database and dashboards. The broker side here is verified on a fresh **Coreflux 2.22.0** broker against
+**Status:** the PLC side runs on a real S7-300, a real S7-1500 (firmware V2.6) and a simulated S7-1200 G2, each read by a
+Coreflux 2.22 broker into a database and dashboards. The broker side here is verified on a fresh **Coreflux 2.22.0** broker against
 two mock PLCs that speak S7 and a real TimescaleDB ([`VERIFICATION.md`](VERIFICATION.md): 47 cells, 58 checks, no runtime error). It
 **requires Coreflux 2.22 or newer** and fits the **Community** licence, one PLC per family (below).
 
@@ -17,7 +17,8 @@ names its family. The PLC code differs, because each family reads its diagnostic
 | Folder | Family | Status |
 |---|---|---|
 | [`s7-300/`](s7-300/TIA-PROJECT.md) | S7-300, and the S7-400 by the same rules | runs on a CPU 315-2 PN/DP, read over MPI and PN at once |
-| [`s7-1500/`](s7-1500/TIA-PROJECT.md) | S7-1500 | runs on a CPU 1511-1 PN, firmware V2.6, added to a project that already ran a program; read over PN |
+| [`s7-1500/`](s7-1500/TIA-PROJECT.md) | S7-1500 | runs on a CPU 1511-1 PN, firmware V2.6, added to a project that already ran a program; read over PN. Also read whole from a simulated CPU 1516-3 PN/DP, firmware V4.1 (S7-PLCSIM Advanced V8) |
+| [`s7-1200/`](s7-1200/TIA-PROJECT.md) | S7-1200 | derived from the S7-1500 kit; **runs on a simulated S7-1200 G2** (CPU 1214C G2, firmware V4.1, S7-PLCSIM Advanced V8), read over PN; not run on a first-generation CPU yet. The read parts of its DBs are byte-identical to the S7-1500's. The broker side is the S7-1500 notebook with three changes, below; the decoder, the historian and Grafana (`plc-detail-s7-1200`) know the family |
 
 Each folder holds `TIA-PROJECT.md`, the one guide from the IP address to the first read, and `plc/`, the blocks as a TIA
 external source.
@@ -111,11 +112,24 @@ count as actions, and so does a Python script):
 
 A second PLC of either family is one more connector and 10 more actions (its route, six actions): beyond Community.
 
+**A PLC registers itself.** Its entry in the decoder's `PLCS` (family, model, order number, paths, area, firmware) is the one
+place a PLC is described. Once a minute its `Liveness` action publishes that entry to `…/<PLC>/<path>/Register/decoded`, and
+the store route hands it to `plc_ingest()`, which adds the PLC to `plc_registry`, and its model to `plc_model` if the model is
+new, without overwriting a row that exists. A new PLC of a known family therefore needs no change to the database or to
+Grafana: it appears in the fleet within a minute of its route. The writer role may INSERT into those two tables, never
+UPDATE: a change to a registered PLC is an UPDATE by hand. A model registered this way has no interfaces until you list it in
+`sql/plc_fleet.sql`.
+
+**An S7-1200 on the broker** (measured on the simulated G2): take the S7-1500 notebook and change three things. The route's
+`CPU_TYPE` is `"S71200"`; the PLC's `PLCS` entry has `"family": "s7-1200"` and its own model; and the `Uns` action leaves out
+the OB121 and OB122 leaves, which an S7-1200 does not have (its error OBs are OB80, OB82, OB83 and OB86). It has no
+`RT_INFO`, so no communication load: the decoder publishes -1, and the detail page leaves that tile out.
+
 ## Infrastructure and assets
 
 | Path | What |
 |---|---|
-| `s7-300/`, `s7-1500/` | the PLC side: the blocks (`plc/perf_kit.scl`) and the guide (`TIA-PROJECT.md`) per family |
+| `s7-300/`, `s7-1500/`, `s7-1200/` | the PLC side: the blocks (`plc/perf_kit.scl`) and the guide (`TIA-PROJECT.md`) per family |
 | `sql/` | the historian: schema, fleet functions, Siemens' texts as CSV and generated SQL, the two roles ([`sql/README.md`](sql/README.md)) |
 | `grafana/provisioning/` | the datasource (uid `timescale-edge`), the fleet and detail dashboards, the alert rules |
 | `compose/docker-compose.yml` | broker 2.22.0, Hub 2.12.0, TimescaleDB (`timescale/timescaledb-ha:pg17.11-ts2.30.1`, the SQL applied on first start), Grafana 13.2.0, and two mock PLCs (profile `mock`); every port on `127.0.0.1` |

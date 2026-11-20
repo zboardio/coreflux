@@ -38,6 +38,17 @@
       "title": "S7-1500 detail",
       "type": "link",
       "url": "/d/plc-detail-s7-1500"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "S7-1200 detail",
+      "type": "link",
+      "url": "/d/plc-detail-s7-1200"
     }
   ],
   "panels": [

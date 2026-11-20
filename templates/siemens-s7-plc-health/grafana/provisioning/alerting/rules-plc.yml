@@ -797,3 +797,396 @@ groups:
           drilldown: 'd/plc-detail-s7-1500?var-plc={{ $labels.plc_id }}&viewPanel=panel-311'
           summary: '{{ $labels.plc_id }}: {{ index $values "A" }} bad echo(es) on {{ $labels.slot }} in 15 min'
           description: 'The PLC received a value on Echo that was neither its current nor its previous Life: a second writer, a replayed message or a wrong address. It falsifies this signal only — the kit writes nothing else — but find the writer: which accounts and rules let a client publish to the Echo topic.'
+
+  - orgId: 1
+    name: plc-s7-1200
+    folder: PLC alerts
+    interval: 1m
+    rules:
+
+      - uid: plc_not_scanning-s7-1200
+        title: 'S7-1200: PLC not scanning — reads succeed, Seq frozen'
+        condition: B
+        for: 1m
+        noDataState: Alerting
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              # Seconds since the frozen Seq was PROVEN (then > 30 s, for 1m): plc_seconds_frozen() — with the broker's
+              # verdicts stored (plc_state_change, the tiles' source), since CpuScanning went false on an online path of
+              # this PLC while none says true; before the first verdict, since the first successful PerfMon read that
+              # brought no new record. 0 while the broker sends nothing (plc_unreachable's business).
+              rawSql: >-
+                SELECT plc_id, plc_seconds_frozen(plc_id)::float AS seconds_frozen FROM plc_registry WHERE plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200')
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [30], type: gt }
+        labels:
+          severity: critical
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '102'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-102'
+          summary: '{{ $labels.plc_id }}: CPU not scanning — the path answers, Seq frozen for {{ index $values "A" }} s'
+          description: 'DB_PerfMon is read without error but its Seq has not moved: the CPU is in STOP or HALT (the key signal). The cause: the error OBs and LEDs on PLC detail, and TIA (the program cannot read an S7-1200''s diagnostic buffer). Reads continuing is expected — a CPU in STOP still answers S7 reads.'
+
+      - uid: plc_path_down-s7-1200
+        title: 'S7-1200: PLC path down — one path fails, another is healthy'
+        condition: B
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              # One row per path of each PLC (plc_registry.paths): that path has no read without error for 90 s
+              # (or none in a day) while ANOTHER of the PLC's paths has. A one-path PLC never fires here: its path
+              # failing is plc_unreachable. A path dead for longer than a day keeps firing (it was dropped before).
+              rawSql: >-
+                SELECT r.plc_id, x.via,
+                CASE WHEN coalesce(plc_last_ok(r.plc_id, x.via), '-infinity') < now() - interval '90 seconds'
+                      AND EXISTS (SELECT 1 FROM unnest(r.paths) AS o(via) WHERE o.via <> x.via
+                                  AND plc_last_ok(r.plc_id, o.via) >= now() - interval '90 seconds')
+                     THEN 1 ELSE 0 END::float AS path_down
+                FROM plc_registry r CROSS JOIN unnest(r.paths) AS x(via) WHERE r.plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200')
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [0], type: gt }
+        labels:
+          severity: warning
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '512'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-512'
+          summary: '{{ $labels.plc_id }}: path {{ $labels.via }} down, another path is healthy'
+          description: 'No successful read over {{ $labels.via }} for 90 s while another of this PLC''s paths reads fine — the fault is on that path, e.g. MPI through a NetLink = the NetLink or the MPI bus, PN = the CPU''s PN port or the switch. The failed-reads table on PLC detail has the connector''s own words.'
+
+      - uid: plc_unreachable-s7-1200
+        title: 'S7-1200: PLC unreachable — every path down'
+        condition: B
+        for: 1m
+        noDataState: Alerting
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              # Every registered PLC, on every one of its paths: seconds since the newest read without error
+              # (plc_last_ok). 86400 = none in a day — a PLC whose route lost it a day ago, or one registered
+              # whose routes were never deployed or never read it: both are a PLC the broker cannot see.
+              rawSql: >-
+                SELECT plc_id, coalesce(extract(epoch FROM now() - plc_last_ok(plc_id)), 86400)::float AS seconds_since_ok_read
+                FROM plc_registry WHERE plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200')
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [90], type: gt }
+        labels:
+          severity: critical
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '101'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-101'
+          summary: '{{ $labels.plc_id }}: no successful read on any of its paths for {{ index $values "A" }} s'
+          description: 'Every path of this PLC down at once: CPU power, the shared LAN, or the machine running the broker — or the broker''s routes or store stopped (check the Coreflux Hub). 86400 s = no read in a day, or never: a PLC registered in plc_registry whose routes are not deployed yet fires here until its first read.'
+
+      - uid: plc_cycle_max_high-s7-1200
+        title: 'S7-1200: PLC cycle time near the watchdog'
+        condition: B
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: >-
+                SELECT plc_id, (max(cyc_max_ms) / plc_watchdog_ms(plc_id) * 100)::float AS pct_of_watchdog
+                FROM plc_cycle WHERE ts_plc > now() - interval '5 minutes' AND plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200') GROUP BY plc_id
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [80], type: gt }
+        labels:
+          severity: warning
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '410'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-410'
+          summary: '{{ $labels.plc_id }}: longest cycle in 5 min at {{ index $values "A" }} % of its watchdog'
+          description: 'CycMax is within 20 % of the maximum cycle time: one more slow cycle and the CPU calls OB80, and stops without it. The histogram on PLC detail shows whether it is one outlier or a shift. The watchdog is the PLC''s own: plc_registry.watchdog_ms, else its model''s preset (plc_model) — set it to the value configured in TIA.'
+
+      - uid: plc_fault_event-s7-1200
+        title: 'S7-1200: PLC fault — OB80/82/86 or a boot after a fault'
+        condition: B
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 3600, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: >-
+                SELECT r.plc_id,
+                ((SELECT coalesce(sum(c.ob80_cnt), 0) FROM plc_cycle c WHERE c.plc_id = r.plc_id AND c.ts_plc > now() - interval '10 minutes')
+                 + (SELECT count(*) FROM plc_fault f WHERE f.plc_id = r.plc_id AND f.ts_fault > now() - interval '1 hour')
+                 + (SELECT count(*) FROM plc_boot b
+                    JOIN LATERAL (SELECT e.ob80, e.ob82, e.ob86 FROM plc_boot_end e
+                                  WHERE e.plc_id = b.plc_id AND (e.boot_date, e.boot_time) < (b.boot_date, b.boot_time)
+                                  ORDER BY e.boot_date DESC, e.boot_time DESC LIMIT 1) e ON true
+                    WHERE b.plc_id = r.plc_id AND b.ts_boot > now() - interval '1 hour'
+                      AND coalesce(e.ob80, 0) + coalesce(e.ob82, 0) + coalesce(e.ob86, 0) > 0))::float AS fault_signals
+                FROM plc_registry r WHERE r.plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200')
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [0], type: gt }
+        labels:
+          severity: critical
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '610'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-610'
+          summary: '{{ $labels.plc_id }}: {{ index $values "A" }} fault signal(s) — OB80 calls, a recorded fault, or a boot after one'
+          description: 'Sum of: OB80 calls in the last 10 min (ring), and a boot in the last hour whose previous boot ended with OB80/82/86 counts; an S7-1200 with the kit''s error OBs does not stop on a fault, so nothing is recorded before a STOP. The error OBs table on PLC detail says which OB was called, with Siemens'' meaning; the boots table how a boot ended. Clears an hour after the event.'
+
+      - uid: plc_records_lost-s7-1200
+        title: 'S7-1200: PLC records lost — Seq gaps'
+        condition: B
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 7200, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: >-
+                SELECT r.plc_id, coalesce(sum(g.missing), 0)::float AS records_lost
+                FROM plc_registry r LEFT JOIN (
+                  SELECT plc_id, next_seq - seq - 1 AS missing
+                  FROM (SELECT plc_id, seq, lead(seq) OVER (PARTITION BY plc_id, boot_date, boot_time ORDER BY seq) AS next_seq
+                        FROM plc_cycle WHERE ts_plc > now() - interval '2 hours' AND plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200')) s
+                  WHERE next_seq - seq > 1) g ON g.plc_id = r.plc_id
+                WHERE r.plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200')
+                GROUP BY r.plc_id
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [0], type: gt }
+        labels:
+          severity: warning
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '521'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-521'
+          summary: '{{ $labels.plc_id }}: {{ index $values "A" }} DB_PerfMon record(s) lost in the last 2 h'
+          description: 'Seq gaps within one boot: the reader was away longer than the ring holds (120 records = 2 min at a 1 s window), or a record was refused (bad stamp). The gaps table on PLC detail lists them exactly; the reads panels show which path was down. Clears when the gap is 2 h old.'
+
+      - uid: plc_clock_skew-s7-1200
+        title: 'S7-1200: PLC clock skew beyond 10 s'
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: >-
+                SELECT plc_id, min(extract(epoch FROM ts_received - ts_plc))::float AS skew_s
+                FROM plc_cycle WHERE ts_plc > now() - interval '2 days' AND ts_received > now() - interval '10 minutes'
+                  AND plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200')
+                GROUP BY plc_id
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [-10, 10], type: outside_range }
+        labels:
+          severity: warning
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '313'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-313'
+          summary: '{{ $labels.plc_id }}: CPU clock off by {{ index $values "A" }} s'
+          description: 'Read time minus the newest PLC stamp, expected at 0–1 s. Hours = the CPU clock is not on UTC: set it, or record the zone in plc_registry.clock_zone. A steady drift = the CPU clock needs a time source. Records are keyed by the PLC stamp, so a clock that jumps back can collide with old keys.'
+
+      - uid: plc_health_stalled-s7-1200
+        title: 'S7-1200: PLC health loop stalled on a path — Life not confirmed while Seq moves'
+        condition: B
+        for: 1m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: >-
+                SELECT h.plc_id, h.slot,
+                CASE WHEN EXISTS (SELECT 1 FROM plc_cycle c WHERE c.plc_id = h.plc_id AND c.ts_plc > now() - interval '2 days'
+                                  AND c.ts_received > now() - interval '90 seconds')
+                     THEN h.age_s ELSE 0 END::float AS age_s
+                FROM (SELECT DISTINCT ON (h.plc_id, h.slot) h.plc_id, h.slot, h.age_s FROM plc_health h
+                      JOIN plc_registry r ON r.plc_id = h.plc_id AND h.slot = ANY (r.paths)
+                      WHERE h.ts > now() - interval '5 minutes' AND r.plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200') ORDER BY h.plc_id, h.slot, h.ts DESC) h
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [15], type: gt }
+        labels:
+          severity: warning
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '310'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-310'
+          summary: '{{ $labels.plc_id }}: health loop stalled on {{ $labels.slot }} — Life unconfirmed for {{ index $values "A" }} s'
+          description: 'The PLC has not seen its Life value echoed on {{ $labels.slot }} while records keep arriving: data flows PLC → broker, but the way back is broken — writes refused (write protection, NetLink access list) or the broker''s echo action died Check the action in the Coreflux Hub.'
+
+      - uid: plc_health_corrupt-s7-1200
+        title: 'S7-1200: PLC health loop corrupt — BadEcho rose'
+        condition: B
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: timescale-edge
+            relativeTimeRange: { from: 900, to: 0 }
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: >-
+                SELECT h.plc_id, h.slot,
+                greatest(0, (array_agg(h.bad_echo ORDER BY h.ts DESC))[1] - (array_agg(h.bad_echo ORDER BY h.ts))[1])::float AS bad_echo_rise
+                FROM plc_health h JOIN plc_registry r ON r.plc_id = h.plc_id AND h.slot = ANY (r.paths)
+                WHERE h.ts > now() - interval '15 minutes' AND r.plc_id IN (SELECT fr.plc_id FROM plc_registry fr LEFT JOIN plc_model fm ON fm.model = fr.model WHERE coalesce(fr.family, fm.family) = 's7-1200') GROUP BY h.plc_id, h.slot
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 0, to: 0 }
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [0], type: gt }
+        labels:
+          severity: critical
+          domain: plc
+          team: infra
+          family: s7-1200
+        annotations:
+          __dashboardUid__: plc-detail-s7-1200
+          __panelId__: '311'
+          drilldown: 'd/plc-detail-s7-1200?var-plc={{ $labels.plc_id }}&viewPanel=panel-311'
+          summary: '{{ $labels.plc_id }}: {{ index $values "A" }} bad echo(es) on {{ $labels.slot }} in 15 min'
+          description: 'The PLC received a value on Echo that was neither its current nor its previous Life: a second writer, a replayed message or a wrong address. It falsifies this signal only — the kit writes nothing else — but find the writer: which accounts and rules let a client publish to the Echo topic.'

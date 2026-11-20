@@ -15,7 +15,7 @@
 
 CREATE TABLE IF NOT EXISTS plc_model (
     model               text    PRIMARY KEY,            -- as plc_registry.model names it, e.g. 'CPU 1511-1 PN'
-    family              text    NOT NULL,               -- s7-300 | s7-1500: the DB_PerfDiag layout, the detail page's family sections
+    family              text    NOT NULL,               -- s7-300 | s7-1500 | s7-1200: the DB_PerfDiag layout, the detail page's family sections
     interfaces          text[]  NOT NULL,               -- what the hardware OFFERS (TIA's X1, X2 …); the paths in use: plc_registry.paths
     watchdog_default_ms integer NOT NULL DEFAULT 150,   -- TIA's preset maximum cycle time; a PLC's own: plc_registry.watchdog_ms
     description         text
@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS plc_model (
 -- Git is the source: a re-apply puts every row back as written here.
 INSERT INTO plc_model (model, family, interfaces, watchdog_default_ms, description) VALUES
     ('CPU 315-2 PN/DP', 's7-300', '{X1 MPI/DP,X2 PN}', 150, 'S7-300, an MPI/DP interface and one PROFINET interface'),
-    ('CPU 1511-1 PN', 's7-1500', '{X1 PN}', 150, 'S7-1500, one PROFINET interface (two ports)')
+    ('CPU 1511-1 PN', 's7-1500', '{X1 PN}', 150, 'S7-1500, one PROFINET interface (two ports)'),
+    ('CPU 1214C AC/DC/Rly G2', 's7-1200', '{X1 PN}', 150, 'S7-1200 G2, one PROFINET interface (two ports)')
 ON CONFLICT (model) DO UPDATE SET family = EXCLUDED.family, interfaces = EXCLUDED.interfaces,
                                   watchdog_default_ms = EXCLUDED.watchdog_default_ms, description = EXCLUDED.description;
 
@@ -192,11 +193,11 @@ CREATE OR REPLACE FUNCTION plc_seconds_frozen(p text) RETURNS double precision L
 $$;
 
 -- Error-OB activity in the last 24 h. S7-300: the ring's OB80 calls plus the faults an error OB recorded before a STOP
--- (OB82/OB86 are counted per boot only). S7-1500: the calls of its six error OBs (plc_ob_call holds the count since the
+-- (OB82/OB86 are counted per boot only). S7-1500 and S7-1200 (layout 2): the calls of its six (four) error OBs (plc_ob_call holds the count since the
 -- boot at each newest call: the rise since 24 h ago, or the whole count when the CPU booted since). Not "faults": a
 -- program can call OB122 2,000 times a second on purpose (the bench does).
 CREATE OR REPLACE FUNCTION plc_faults_24h(p text) RETURNS bigint LANGUAGE sql STABLE AS $$
-  SELECT CASE WHEN plc_family(p) = 's7-1500' THEN
+  SELECT CASE WHEN plc_family(p) IN ('s7-1500', 's7-1200') THEN
            (SELECT coalesce(sum(CASE WHEN o.prior IS NOT NULL AND o.prior <= o.cur THEN o.cur - o.prior ELSE o.cur END), 0)
             FROM (SELECT (SELECT calls FROM plc_ob_call WHERE plc_id = p AND ob_nr = k.ob AND ts_plc > now() - interval '24 hours'
                           ORDER BY ts_plc DESC LIMIT 1) AS cur,

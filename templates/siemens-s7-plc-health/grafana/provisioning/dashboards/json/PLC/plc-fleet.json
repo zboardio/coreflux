@@ -38,6 +38,17 @@
       "title": "S7-1500 detail",
       "type": "link",
       "url": "/d/plc-detail-s7-1500"
+    },
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "S7-1200 detail",
+      "type": "link",
+      "url": "/d/plc-detail-s7-1200"
     }
   ],
   "panels": [
@@ -635,7 +646,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT plc_id AS \"PLC\", area, model, firmware, state, path_states AS \"paths\", health AS \"health loop\", cyc_avg_ms AS \"cycle avg\", cyc_max_5m_ms AS \"cycle max 5 min\", cyc_max_pct AS \"of watchdog\", faults_24h AS \"error-OB calls 24 h\", data_age_s AS \"last good read\", last_boot AS \"last boot\", severity, CASE family WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' ELSE 'plc-fleet' END AS \"detail\" FROM plc_latest WHERE area IN ($area) AND family IN ($family) AND model IN ($model) ORDER BY severity DESC, faults_24h DESC, plc_id",
+          "rawSql": "SELECT plc_id AS \"PLC\", area, model, firmware, state, path_states AS \"paths\", health AS \"health loop\", cyc_avg_ms AS \"cycle avg\", cyc_max_5m_ms AS \"cycle max 5 min\", cyc_max_pct AS \"of watchdog\", faults_24h AS \"error-OB calls 24 h\", data_age_s AS \"last good read\", last_boot AS \"last boot\", severity, CASE family WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' WHEN 's7-1200' THEN 'plc-detail-s7-1200' ELSE 'plc-fleet' END AS \"detail\" FROM plc_latest WHERE area IN ($area) AND family IN ($family) AND model IN ($model) ORDER BY severity DESC, faults_24h DESC, plc_id",
           "refId": "A"
         }
       ],
@@ -1154,7 +1165,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH c AS ( SELECT plc_id, max(cyc_max_ms) AS mx, sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0) AS av, sum(cycles) AS n FROM plc_cycle_5m WHERE plc_id IN (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) AND $__timeFilter(bucket) AND $__timeFrom() > now() - interval '729 days' GROUP BY 1 UNION ALL SELECT plc_id, max(cyc_max_ms), sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0), sum(cycles) FROM plc_cycle_1h WHERE plc_id IN (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) AND $__timeFilter(bucket) AND NOT $__timeFrom() > now() - interval '729 days' GROUP BY 1) SELECT c.plc_id AS \"PLC\", coalesce(r.model, '(unknown)') AS model, c.av AS \"avg\", c.mx AS \"max\", plc_watchdog_ms(c.plc_id) AS \"watchdog\", round((c.mx / plc_watchdog_ms(c.plc_id) * 100)::numeric, 1) AS \"max of watchdog\", c.n AS \"cycles\", CASE plc_family(c.plc_id) WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' ELSE 'plc-fleet' END AS \"detail\" FROM c JOIN plc_registry r USING (plc_id) ORDER BY 6 DESC NULLS LAST, 1",
+          "rawSql": "WITH c AS ( SELECT plc_id, max(cyc_max_ms) AS mx, sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0) AS av, sum(cycles) AS n FROM plc_cycle_5m WHERE plc_id IN (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) AND $__timeFilter(bucket) AND $__timeFrom() > now() - interval '729 days' GROUP BY 1 UNION ALL SELECT plc_id, max(cyc_max_ms), sum(cyc_avg_ms * cycles) / nullif(sum(cycles), 0), sum(cycles) FROM plc_cycle_1h WHERE plc_id IN (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) AND $__timeFilter(bucket) AND NOT $__timeFrom() > now() - interval '729 days' GROUP BY 1) SELECT c.plc_id AS \"PLC\", coalesce(r.model, '(unknown)') AS model, c.av AS \"avg\", c.mx AS \"max\", plc_watchdog_ms(c.plc_id) AS \"watchdog\", round((c.mx / plc_watchdog_ms(c.plc_id) * 100)::numeric, 1) AS \"max of watchdog\", c.n AS \"cycles\", CASE plc_family(c.plc_id) WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' WHEN 's7-1200' THEN 'plc-detail-s7-1200' ELSE 'plc-fleet' END AS \"detail\" FROM c JOIN plc_registry r USING (plc_id) ORDER BY 6 DESC NULLS LAST, 1",
           "refId": "A"
         }
       ],
@@ -1295,7 +1306,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "WITH p AS (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) SELECT e.*, CASE plc_family(e.\"PLC\") WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' ELSE 'plc-fleet' END AS \"detail\" FROM ( (SELECT s.ts AS \"time\", s.plc_id AS \"PLC\", 'verdict' AS \"source\", s.via AS \"path\", s.signal || ' ' || coalesce(s.prev, '—') || ' → ' || s.value AS \"event\" FROM plc_state_change s JOIN p USING (plc_id) WHERE $__timeFilter(s.ts)) UNION ALL (SELECT f.ts_fault, f.plc_id, 'fault before STOP', NULL, 'OB' || f.fault_ob || ', event class 0x' || upper(to_hex(f.ev_class::integer)) || ', fault id 0x' || upper(to_hex(f.flt_id::integer)) FROM plc_fault f JOIN p USING (plc_id) WHERE $__timeFilter(f.ts_fault)) UNION ALL (SELECT o.ts_plc, p.plc_id, 'error OB, newest call', o.via, o.ob || ' ' || o.fault_code || coalesce(' ' || o.fault_text, '') || ', ' || o.calls || ' calls since boot' FROM p CROSS JOIN unnest('{80,82,83,86,121,122}'::smallint[]) AS k(ob), LATERAL (SELECT * FROM plc_ob_call_text t WHERE t.plc_id = p.plc_id AND t.ob_nr = k.ob AND $__timeFilter(t.ts_plc) ORDER BY t.ts_plc DESC LIMIT 1) o) ORDER BY 1 DESC LIMIT 200) e ORDER BY 1 DESC",
+          "rawSql": "WITH p AS (SELECT r.plc_id FROM plc_registry r LEFT JOIN plc_model m ON m.model = r.model WHERE coalesce(r.area, '(none)') IN ($area) AND coalesce(r.family, m.family, '(unknown)') IN ($family) AND coalesce(r.model, '(unknown)') IN ($model)) SELECT e.*, CASE plc_family(e.\"PLC\") WHEN 's7-300' THEN 'plc-detail-s7-300' WHEN 's7-1500' THEN 'plc-detail-s7-1500' WHEN 's7-1200' THEN 'plc-detail-s7-1200' ELSE 'plc-fleet' END AS \"detail\" FROM ( (SELECT s.ts AS \"time\", s.plc_id AS \"PLC\", 'verdict' AS \"source\", s.via AS \"path\", s.signal || ' ' || coalesce(s.prev, '—') || ' → ' || s.value AS \"event\" FROM plc_state_change s JOIN p USING (plc_id) WHERE $__timeFilter(s.ts)) UNION ALL (SELECT f.ts_fault, f.plc_id, 'fault before STOP', NULL, 'OB' || f.fault_ob || ', event class 0x' || upper(to_hex(f.ev_class::integer)) || ', fault id 0x' || upper(to_hex(f.flt_id::integer)) FROM plc_fault f JOIN p USING (plc_id) WHERE $__timeFilter(f.ts_fault)) UNION ALL (SELECT o.ts_plc, p.plc_id, 'error OB, newest call', o.via, o.ob || ' ' || o.fault_code || coalesce(' ' || o.fault_text, '') || ', ' || o.calls || ' calls since boot' FROM p CROSS JOIN unnest('{80,82,83,86,121,122}'::smallint[]) AS k(ob), LATERAL (SELECT * FROM plc_ob_call_text t WHERE t.plc_id = p.plc_id AND t.ob_nr = k.ob AND $__timeFilter(t.ts_plc) ORDER BY t.ts_plc DESC LIMIT 1) o) ORDER BY 1 DESC LIMIT 200) e ORDER BY 1 DESC",
           "refId": "A"
         }
       ],

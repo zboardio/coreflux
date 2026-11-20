@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 import snap7
 from snap7.type import SrvArea
 
-from kit_layout import DIAG1500_SIZE, DIAG_SIZE, HEALTH_SIZE, HEALTH_SLOTS, MON_SIZE, RECORD_SIZE, RING_SIZE, build_diag, build_diag_1500
+from kit_layout import DIAG1200_SIZE, DIAG1500_SIZE, DIAG_SIZE, HEALTH_SIZE, HEALTH_SLOTS, MON_SIZE, RECORD_SIZE, RING_SIZE, build_diag, build_diag_1200, build_diag_1500
 from kit_layout import build_health, build_mon, pack_record, stamp
 
 
@@ -27,15 +27,17 @@ STOP_FILE = "/tmp/kit-stop"
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=102)
-    ap.add_argument("--family", choices=("s7-300", "s7-1500"), default="s7-300",
-                    help="s7-1500: DB_PerfDiag layout 2, and OB122 called about 2,000 times a second, as on the bench")
+    ap.add_argument("--family", choices=("s7-300", "s7-1500", "s7-1200"), default="s7-300",
+                    help="s7-1500: DB_PerfDiag layout 2, and OB122 called about 2,000 times a second, as on the bench; "
+                         "s7-1200: layout 2 family 1200, one OB83 call, no communication load")
     a = ap.parse_args()
     now = datetime.now(timezone.utc)
     boot_date, boot_time = stamp(now)
     big = a.family == "s7-1500"
     mon, health = bytearray(build_mon(boot_date, boot_time)), bytearray(build_health())
-    diag = bytearray(build_diag_1500(now) if big else build_diag(now))
-    assert (len(mon), len(health)) == (MON_SIZE, HEALTH_SIZE) and len(diag) == (DIAG1500_SIZE if big else DIAG_SIZE)
+    diag = bytearray({"s7-1500": build_diag_1500, "s7-1200": build_diag_1200}.get(a.family, build_diag)(now))
+    assert (len(mon), len(health)) == (MON_SIZE, HEALTH_SIZE)
+    assert len(diag) == {"s7-1500": DIAG1500_SIZE, "s7-1200": DIAG1200_SIZE}.get(a.family, DIAG_SIZE)
     srv = snap7.server.Server(log=False)
     srv.register_area(SrvArea.DB, 880, mon)
     srv.register_area(SrvArea.DB, 881, diag)
