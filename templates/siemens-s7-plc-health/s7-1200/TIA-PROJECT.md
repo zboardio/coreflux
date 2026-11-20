@@ -102,7 +102,7 @@ Then each DB's *Properties → Attributes*:
 | *Optimized block access* | **off** | **off** | **off** | a read addresses bytes; the source already sets it, check it held |
 | *Only store in load memory* | off | off | off | such a DB cannot be read at run time |
 | *Data block write-protected in the device* | off | off | off | `DB_PerfHealth` takes the echo bytes, and the CPU writes all three |
-| *Retain* (in the DB editor, for the whole block) | **on if there is room, else off** | **on** | off | see below |
+| *Retain* (in the DB editor, for the whole block) | **on if there is room, else off** | **on** | on | the source creates all three retained (it has no `NON_RETAIN`); `DB_PerfMon`: see below |
 
 ### Retentive memory decides `DB_PerfMon`
 

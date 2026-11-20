@@ -11,6 +11,11 @@
 // DB's LayoutVersion. DB_PerfMon's read part (0..8231), DB_PerfDiag's read part (0..323) and DB_PerfHealth are
 // byte-identical to the S7-1500 kit's; DB_PerfDiag names its family in CpuFamily.
 //
+// Retain: no DATA_BLOCK below carries NON_RETAIN, so TIA creates all three DBs RETAINED (whole block, standard access).
+// Measured in TIA V21 (2026-11-20): a source generated from a non-retained standard DB has NON_RETAIN on the line after
+// VERSION, one from a retained DB has nothing there. Keep it so: the ring, the boot facts and the counters must survive
+// a STOP and a power loss. Check the Retain box held after generating (the guide, step 5).
+//
 // What an S7-1200 does not have, and what the kit does instead:
 //   RT_INFO          no communication load: CommLoad_pct is -1 in every record and in DB_PerfDiag. The cycle figures of
 //                    DB_PerfDiag come from the kit's own RUNTIME measurement.

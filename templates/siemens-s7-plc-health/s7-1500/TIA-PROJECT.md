@@ -91,9 +91,9 @@ Then each DB's *Properties → Attributes*:
 | *Optimized block access* | **off** | **off** | **off** | a read addresses bytes; the source already sets it, check it held |
 | *Only store in load memory* | off | off | off | such a DB cannot be read at run time |
 | *Data block write-protected in the device* | off | off | off | `DB_PerfHealth` takes the echo bytes, and the CPU writes all three |
-| *Retain* (in the DB editor, for the whole block) | **on** | **on** | off | the ring, the previous boot and the fault counters must survive a restart and a power loss |
+| *Retain* (in the DB editor, for the whole block) | **on** | **on** | **on** | the ring, the previous boot and the counters must survive a restart and a power loss. The source creates all three retained (it has no `NON_RETAIN`): check it held |
 
-Retentive memory: the two retained DBs take about 8.7 KB. Check *Program info → Resources → Retentive memory* still has room after the compile.
+Retentive memory: the three DBs take about 8.7 KB. Check *Program info → Resources → Retentive memory* still has room after the compile.
 
 ## 6. Create the kit's two OBs
 
@@ -380,7 +380,7 @@ A watch table:
 | Tag | Expect |
 |---|---|
 | `DB_PerfMon.Seq`, `WriteIdx` | `Seq` up by 1 each second, `WriteIdx` following, 0 to 119 |
-| `DB_PerfMon.BootDate`, `BootTime`, `RestartCount` | today, UTC, and 1 or more after a STOP to RUN. **Still 0 means OB884 has no call:** step 6 |
+| `DB_PerfMon.BootDate`, `BootTime`, `RestartCount` | today, UTC, and 1 or more after a STOP to RUN. **Still 0 means OB884 has no call:** step 6. **Back to 1 after every STOP to RUN means `DB_PerfMon` is not retained:** step 5 |
 | `DB_PerfMon.Ring[0].CycMax_ms`, `Cycles`, `CommLoad_pct` | filled; `CommLoad_pct` -1 means `RT_INFO` refused it, see `DB_PerfDiag.RtRet` |
 | `DB_PerfDiag.Step` | 1 within a second of a start |
 | `DB_PerfDiag.Led[0..2]` | RUN/STOP, ERROR, MAINT: 1 off, 2 or 3 on, 4 or 5 flashing |

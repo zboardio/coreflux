@@ -9,6 +9,11 @@
 //
 // A reader decodes by offset, big-endian, so every DB here has optimized access off, and a layout change raises that
 // DB's LayoutVersion. DB_PerfMon's read part (0..8231) and DB_PerfHealth are byte-identical to the S7-300 kit's.
+//
+// Retain: no DATA_BLOCK below carries NON_RETAIN, so TIA creates all three DBs RETAINED (whole block, standard access).
+// Measured in TIA V21 (2026-11-20): a source generated from a non-retained standard DB has NON_RETAIN on the line after
+// VERSION, one from a retained DB has nothing there. Keep it so: the ring, the boot facts and the counters must survive
+// a STOP and a power loss. Check the Retain box held after generating (the guide, step 5).
 
 TYPE "typPerfRecord"
 VERSION : 0.1
