@@ -3,7 +3,7 @@
 **Know how your Siemens PLCs are doing: cycle time, error OBs, STOPs and a live health loop, read into Coreflux and kept
 in a database, with nothing lost between two polls.**
 
-A small, self-contained set of blocks goes into the PLC next to the program it already runs. It measures every cycle,
+The **health kit**, a small, self-contained set of blocks (`<family>/plc/health_kit.scl`), goes into the PLC next to the program it already runs. It measures every cycle,
 counts every error-OB call and closes one record a second into a ring. The broker reads the ring whole with the native
 `SIEMENS_S7` connector, decodes it, publishes a UNS, stores every record once in TimescaleDB, and Grafana shows the fleet.
 
@@ -210,7 +210,7 @@ records, the broker's time for what the broker derives), `datatype` (`number` ·
 
 | Path | What |
 |---|---|
-| `s7-300/`, `s7-1200/`, `s7-1500/` | the PLC side per family: the blocks (`plc/perf_kit.scl`) and the guide (`TIA-PROJECT.md`) |
+| `s7-300/`, `s7-1200/`, `s7-1500/` | the PLC side per family: the blocks (`plc/health_kit.scl`) and the guide (`TIA-PROJECT.md`) |
 | `src/*.lotnb.md` | the notebooks as authored; the `.lotnb` files are rendered from them |
 | `sql/` | the historian: schema, fleet functions, Siemens' texts as CSV and generated SQL, the two roles ([`sql/README.md`](sql/README.md)) |
 | `grafana/provisioning/` | the datasource (uid `timescale-edge`), the fleet and detail dashboards, the alert rules ([`grafana/README.md`](grafana/README.md)) |

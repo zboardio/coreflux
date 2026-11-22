@@ -16,15 +16,15 @@ The addresses below are examples: use your own.
 |---|---|---|---|
 | **OB880** | `OB_PerfMon`, program cycle | **you create it**, step 6 | the CPU, every cycle, after OB1 |
 | **OB884** | `OB_PerfBoot`, startup | **you create it**, step 6 | the CPU, at each STOP to RUN |
-| **880** | `FC_PerfMon` and `DB_PerfMon` | `plc/perf_kit.scl` | `OB_PerfMon` (OB880) |
-| 881 | `FC_PerfDiag` and `DB_PerfDiag` | `plc/perf_kit.scl` | `FC_PerfMon` |
-| 882 | `FC_PerfHealth` and `DB_PerfHealth` | `plc/perf_kit.scl` | `FC_PerfMon` |
-| 883 | `FC_PerfStamp` | `plc/perf_kit.scl` | the other FCs |
-| 884 | `FC_PerfBoot` | `plc/perf_kit.scl` | `OB_PerfBoot` (OB884) |
-| 885 | `FC_PerfFault` | `plc/perf_kit.scl` | **OB80, OB82, OB83, OB86, OB121, OB122** with S7-1500 start information, the ones your project has |
-| 887 | `FC_PerfFaultClassic` | `plc/perf_kit.scl` | the same OBs where they have **classic** (S7-300/400 style) start information, step 7 |
+| **880** | `FC_PerfMon` and `DB_PerfMon` | `plc/health_kit.scl` | `OB_PerfMon` (OB880) |
+| 881 | `FC_PerfDiag` and `DB_PerfDiag` | `plc/health_kit.scl` | `FC_PerfMon` |
+| 882 | `FC_PerfHealth` and `DB_PerfHealth` | `plc/health_kit.scl` | `FC_PerfMon` |
+| 883 | `FC_PerfStamp` | `plc/health_kit.scl` | the other FCs |
+| 884 | `FC_PerfBoot` | `plc/health_kit.scl` | `OB_PerfBoot` (OB884) |
+| 885 | `FC_PerfFault` | `plc/health_kit.scl` | **OB80, OB82, OB83, OB86, OB121, OB122** with S7-1500 start information, the ones your project has |
+| 887 | `FC_PerfFaultClassic` | `plc/health_kit.scl` | the same OBs where they have **classic** (S7-300/400 style) start information, step 7 |
 
-**The source file holds the work, the OBs only start it.** `plc/perf_kit.scl` generates the three types, the three DBs and the seven FCs. No OB is in it: `OB_PerfMon` and `OB_PerfBoot` are two one-line blocks you create in TIA, where an OB gets its kind (program cycle, startup), and each only calls the FC of the same name and number. So `OB_PerfBoot` (OB884) is the CPU's entry at startup, and `FC_PerfBoot` (FC884) is the code it runs.
+**The source file holds the work, the OBs only start it.** `plc/health_kit.scl` generates the three types, the three DBs and the seven FCs. No OB is in it: `OB_PerfMon` and `OB_PerfBoot` are two one-line blocks you create in TIA, where an OB gets its kind (program cycle, startup), and each only calls the FC of the same name and number. So `OB_PerfBoot` (OB884) is the CPU's entry at startup, and `FC_PerfBoot` (FC884) is the code it runs.
 
 **A DB has the same number as the FC that writes it, and an OB the number of the FC it calls.** The `880` range is used because even crowded programs rarely reach it. 886 is kept free for a later block.
 
@@ -78,7 +78,7 @@ Set up this way on a CPU 1511-1 PN (firmware V2.6) and on a simulated CPU 1516-3
 
 ## 4. Import the code
 
-1. *External source files → Add new external file →* `plc/perf_kit.scl`.
+1. *External source files → Add new external file →* `plc/health_kit.scl` (called `perf_kit.scl` until 2026-11-22: the blocks it generates have the same names, so a CPU that runs the older source needs no change).
 2. Right-click it, *Generate blocks from source.* The file has Windows line endings (CRLF), and must keep them: an older TIA, V15.1 for one, reads the code of a file saved with Unix line endings (LF) as STL and fails on its first statement, while the DBs still compile. If you edit the file, use an editor that keeps CRLF.
 3. Read the result in the *Info* tab. Any error: stop here, and **read the first error, at the top of the list.** The rest usually follow from it.
 

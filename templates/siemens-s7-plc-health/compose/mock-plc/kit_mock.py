@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""kit_mock.py — a python-snap7 server holding the kit's DBs, running the algorithm of plc/perf_kit.scl, started as
+"""kit_mock.py — a python-snap7 server holding the kit's DBs, running the algorithm of plc/health_kit.scl, started as
 after a warm restart: the ring still holds a previous boot's slots. It proves the broker side, never the CPU.
 
 The health loop is FC_PerfHealth's: Life moves on only when Echo confirms it, a value that is neither the current nor the

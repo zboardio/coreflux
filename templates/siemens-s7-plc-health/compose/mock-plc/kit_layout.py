@@ -1,4 +1,4 @@
-"""kit_layout.py — the kit's DBs as bytes, the Python side of <family>/plc/perf_kit.scl, for the mock PLC."""
+"""kit_layout.py — the kit's DBs as bytes, the Python side of <family>/plc/health_kit.scl, for the mock PLC."""
 from __future__ import annotations
 
 import struct
@@ -75,7 +75,7 @@ def build_health() -> bytes:
     return bytes(b)
 
 
-# ── The S7-1500 (s7-1500/plc/perf_kit.scl): DB_PerfMon's read part and DB_PerfHealth as above; DB_PerfDiag is layout 2,
+# ── The S7-1500 (s7-1500/plc/health_kit.scl): DB_PerfMon's read part and DB_PerfHealth as above; DB_PerfDiag is layout 2,
 # family 1500.
 DIAG1500_READ, DIAG1500_SIZE = 324, 348
 DIAG1200_SIZE = 362   # the S7-1200: the same read part, DB_PerfMon's boot facts at 348..361
@@ -84,7 +84,7 @@ HEALTH_SLOTS_1500 = {"Reserve": 8, "PN": 26}
 
 
 # The classic form of a slot (FC_PerfFaultClassic, an OB migrated with the S7-300/400 TEMP): EvClass + 0x80, then the packing
-# of the comment above typPerfFaultSlot in perf_kit.scl. As the bench's project has them: OB82 and OB86 classic.
+# of the comment above typPerfFaultSlot in health_kit.scl. As the bench's project has them: OB82 and OB86 classic.
 CLASSIC = 0x80
 # OB82, incoming: input module 256, byte 8 = defective + external fault + channel fault (0x0D), byte 9 = analog module with
 # channel information (0x15), bytes 10-11 clear.
@@ -117,7 +117,7 @@ def build_diag_1500(now: datetime, classic: bool = True, ob122: tuple | None = N
 
 
 def build_diag_1200(now: datetime) -> bytes:
-    """DB_PerfDiag layout 2, family 1200 (s7-1200/plc/perf_kit.scl): the S7-1500's read part with four error OBs. OB83 called
+    """DB_PerfDiag layout 2, family 1200 (s7-1200/plc/health_kit.scl): the S7-1500's read part with four error OBs. OB83 called
     once, a module pulled half an hour before now (an S7-1200 has no OB121/OB122: their slots stay zero); LEDs RUN; no
     RT_INFO, so CommLoad_pct -1 and RtRet {-1,0,0,0}, the cycle figures the kit's own; the previous boot's end with four OBs."""
     b = bytearray(DIAG1200_SIZE)
@@ -139,7 +139,7 @@ def build_diag_1200(now: datetime) -> bytes:
 
 
 def decode_diag_1500(raw: bytes, family_no: int = 1500) -> dict:
-    """DB_PerfDiag layout 2, family 1500 (or 1200: the same read part, s7-1200/plc/perf_kit.scl; its OB121/OB122 slots
+    """DB_PerfDiag layout 2, family 1500 (or 1200: the same read part, s7-1200/plc/health_kit.scl; its OB121/OB122 slots
     stay empty): what the bench needs to see, before the broker's decoder learns it."""
     if len(raw) < DIAG1500_READ:
         return {"error": f"{len(raw)} bytes, want {DIAG1500_READ}"}

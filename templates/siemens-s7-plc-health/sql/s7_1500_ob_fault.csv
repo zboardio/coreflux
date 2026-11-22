@@ -1,4 +1,4 @@
-# What the S7-1500 kit records from its error OBs (s7-1500/plc/perf_kit.scl, DB_PerfDiag.Fault[0..5]): the meaning of each
+# What the S7-1500 kit records from its error OBs (s7-1500/plc/health_kit.scl, DB_PerfDiag.Fault[0..5]): the meaning of each
 # start-information code, as Siemens publishes it in the TIA Portal help, "Functional description of S7-1500 CPUs" V21
 # (11/2025), one page per OB (the source column). Researched 2026-11-09; read as raw topic text, no forum sources.
 # Codes are hex without 16#. OB83/OB86 rows are keyed Event_Class/Fault_ID (39 = incoming/removed, 38 = outgoing/inserted).
@@ -10,7 +10,7 @@
 # The buffer entry is written whether OB122 exists or not; GET_ERR_ID in the failing block suppresses both.
 # CLASSIC start information (2026-11-10): an error OB of an S7-1500 project migrated from an S7-300/400 can keep the classic
 # 20-byte TEMP start information (OB82_EV_CLASS, OB82_MDL_ADDR, ...); the kit's FC_PerfFaultClassic records it in the same
-# slot with bit 7 of EvClass set (s7-1500/plc/perf_kit.scl, the comment above typPerfFaultSlot). The "Classic ..." rows are
+# slot with bit 7 of EvClass set (s7-1500/plc/health_kit.scl, the comment above typPerfFaultSlot). The "Classic ..." rows are
 # Siemens' classic meanings: "System Software for S7-300/400 System and Standard Functions", Volume 1/2, Reference Manual
 # 05/2010, A5E02789976-01, chapter 1 (one section per OB, page cited), and Volume 2/2, A5E02790053-01 §33.2 (module class),
 # read from the PDF's text layer on 2026-11-10. FROM DOCUMENTATION, NOT MEASURED: the bench's CPU 1511 measured the classic

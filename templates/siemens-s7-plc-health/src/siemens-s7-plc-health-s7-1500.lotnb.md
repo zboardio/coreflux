@@ -35,7 +35,7 @@ second PLC of either family costs one more connector, which Community does not h
 The broker reads three DBs that the kit's blocks write: **DB880 `DB_PerfMon`** (the ring of one-second records,
 8,232 bytes), **DB881 `DB_PerfDiag`** (layout 2 on an S7-1500: one slot per error OB, the LEDs, `RT_INFO`; 324 bytes
 read) and **DB882 `DB_PerfHealth`** (the health loop, 44 bytes). They come with this template as a TIA Portal external
-source for the S7-1500, `perf_kit.scl`, with its own guide; the template's GitHub folder holds both. The DB numbers
+source for the S7-1500, `health_kit.scl`, with its own guide; the template's GitHub folder holds both. The DB numbers
 matter: the route addresses them by number.
 
 On the CPU: **"Permit access with PUT/GET communication from remote partner"** on (it is hardware configuration: the
@@ -112,7 +112,7 @@ notebooks can run on one broker; if you edit it, deploy the same text from both.
 ```python
 # Script Name: S7PerfDecode
 # The broker-hosted decoder of the Siemens S7 PLC health kit, for every PLC this broker reads: one raw read in, one JSON
-# message out, for plc_ingest() in the historian. Layouts: <family>/plc/perf_kit.scl of the template (s7-300, s7-1500).
+# message out, for plc_ingest() in the historian. Layouts: <family>/plc/health_kit.scl of the template (s7-300, s7-1500).
 # Stateless, so a broker restart is safe: every read offers everything valid and the database dedupes. The UNS functions
 # get their state back as arguments, from the broker. Which PLC: the trailing plc argument (a key of PLCS).
 # This cell is the same in both family notebooks, PLCS included, so both can run on one broker: keep the two equal.
@@ -321,7 +321,7 @@ def _perf_diag(raw, out):
 
 
 def _perf_diag_l2(raw, out):
-    """DB_PerfDiag layout 2, the S7-1500 (s7-1500/plc/perf_kit.scl): the program cannot read the diagnostic buffer on this
+    """DB_PerfDiag layout 2, the S7-1500 (s7-1500/plc/health_kit.scl): the program cannot read the diagnostic buffer on this
     family, so no SZL and no entries. Instead one 20-byte slot per error OB (FAULT_OBS): calls since the boot, the newest
     call's UTC stamp, Event_Class, Fault_ID and three start-information words. The newest call of any OB is "newest",
     not "fault": plc_fault holds what stopped an S7-300; an S7-1500's OB122 can be called 2,000 times a second.
@@ -461,6 +461,57 @@ def leaves_of(family):
     return out
 
 
+# The fleet panel (2026-11-22): one table of every PLC and path, built from the UNS itself, so a PLC appears in it the way
+# it appears in the historian, by publishing. S7FleetIndex reacts to <root>/+/+/DeviceStatus, which every PLC's liveness
+# action republishes every 10 s, and hands fleet() that PLC's newest leaves and the kept table. A row not refreshed for
+# FLEET_SILENT_S says so; one silent for FLEET_KEEP_S leaves the table (a PLC parked or removed).
+FLEET_SILENT_S = 60
+FLEET_KEEP_S = 3600
+
+
+def _value(envelope):
+    return _load(envelope).get("value")
+
+
+def _num(value):
+    try:
+        return round(float(value), 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def fleet(plc, via, device, scan, health, cyc_avg, cyc_max, boot, fault, kept, now=None):
+    """One PLC path's row merged into the kept fleet. Returns the new state, the rows worst first (a JSON array for a
+    table) and a summary (counts for value tiles), each a finished string."""
+    now = time.time() if now is None else float(now)
+    rows = _load(kept)
+    scanning = _value(scan)
+    rows["%s/%s" % (plc, via)] = {
+        "plc": plc, "path": via, "device": _value(device) or "unknown",
+        "cpu": "RUN" if scanning is True else ("not scanning" if scanning is False else "unknown"),
+        "health": _value(health) or "-", "cycle_avg_ms": _num(_value(cyc_avg)), "cycle_max_ms": _num(_value(cyc_max)),
+        "boot": _value(boot) or "-", "last_fault": str(_value(fault) or "-")[:90], "at": now}
+    table = []
+    for key in sorted(rows):
+        row = rows[key]
+        age = now - float(row.get("at", 0))
+        if age > FLEET_KEEP_S:
+            continue
+        shown = dict(row)
+        if age > FLEET_SILENT_S:
+            shown["device"] = "silent %d s" % int(age)
+        shown["seen"] = _iso(float(row.get("at", 0)))
+        shown.pop("at", None)
+        shown["ok"] = shown["device"] == "online" and shown["cpu"] == "RUN" and shown["health"] in ("ok", "-")
+        table.append((key, row, shown))
+    kept_out = dict((key, row) for key, row, _ in table)
+    shown = [x[2] for x in sorted(table, key=lambda x: (x[2]["ok"], x[0]))]
+    summary = {"plcs": len(set(r["plc"] for r in shown)), "paths": len(shown),
+               "running": len(set(r["plc"] for r in shown if r["cpu"] == "RUN")),
+               "attention": len([r for r in shown if not r["ok"]]), "at": _iso(now)}
+    return json.dumps({"state": json.dumps(kept_out), "rows": json.dumps(shown), "summary": json.dumps(summary)})
+
+
 def event_text(event_id):
     """The text TIA shows for an event ID, or None: an exact ID first, then the masked module forms, the most specific
     mask first. The same data and rule as the historian's plc_event_text(); the dicts at the end are generated."""
@@ -505,7 +556,7 @@ def ob_fault_text(ob, slot):
 
 def _classic_text(ob, slot):
     """A slot with CLASSIC start information (EvClass bit 7, FC_PerfFaultClassic), in words: Siemens' S7-300/400 meanings
-    (the "Classic ..." rows of the CSV) and the packing of the comment above typPerfFaultSlot in perf_kit.scl. The
+    (the "Classic ..." rows of the CSV) and the packing of the comment above typPerfFaultSlot in health_kit.scl. The
     historian's plc_ob_call_text.details says the same."""
     ev, fid, info1, info2, info3 = slot["ev_class"] & 0x7F, slot["fault_id"], slot["info1"], slot["info2"], slot["info3"]
     z = info2 << 16 | info3   # bytes 8 to 11 of the OB's TEMP, as one DWORD (OB82's bits, OB86's RACKS_FLTD)
