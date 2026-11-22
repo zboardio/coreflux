@@ -68,9 +68,10 @@ For Netatmo, a mock API that rotates tokens the way Netatmo does takes the place
 algorithm) take the place of the CPUs, behind the template's real routes, with a real TimescaleDB behind the store
 route; that template is verified on 2.22.0, the version it requires.
 
-## LoT lessons, measured on 2.14.3
+## LoT lessons
 
-Each of these cost us a failure before it became a rule. The templates follow all of them.
+Each of these cost us a failure before it became a rule. They were measured on 2.14.3; the Siemens template runs on
+2.22.0 and follows them too. What 2.22.0 changed is listed after the table.
 
 | Avoid | Because |
 |---|---|
@@ -92,8 +93,22 @@ Behaviours to design around:
   Rule that must let a Route through admits the empty user name, which is only sound with
   anonymous login off.
 - **No repeated callables.** A callable action may run only once per calling action.
-- **No `GET JSON` on a Python result.** `GET JSON … IN {var}` fails at runtime when `{var}` holds a
-  `CALL PYTHON` return value; a variable set from `PAYLOAD AS STRING` works.
+- **No `GET JSON` on a Python result (2.14.3).** `GET JSON … IN {var}` fails at runtime when `{var}` holds a
+  `CALL PYTHON` return value; a variable set from `PAYLOAD AS STRING` works. Fixed in 2.22.0 (below).
 - **Pin the secret-store key.** `COREFLUX_SECRET_KEY` encrypts the store behind `GET SECRET` and
   `KEEP SECRET`. Unpinned, it is machine-derived, and a restore onto other hardware cannot read a
   single secret.
+
+What 2.22.0 changed, measured:
+
+- **`PUBLISH TOPIC … RETAIN` works.** 2.14.3 refused `RETAIN` in LoT; on 2.22.0 a retained publish reaches a fresh
+  subscriber.
+- **`GET JSON` on a Python result works,** when the function returns a JSON string. A missing key still reads `"null"`.
+- **Rules need Growth or Enterprise.** On Community `-addRule` is refused, so a template documents its Rule for those
+  licences instead of shipping it as a cell.
+- **Disabling an action rewrites its source.** `-disableAction` and `-enableAction` write the action back into the
+  project without its `//` comment lines, so it no longer matches the file it came from. Re-add it from your source to
+  restore it.
+- **Keep headroom under the licence's action limit.** After `-removeAction` the usage figure stops counting route
+  events and the broker accepts more actions than the tier allows; at the next restart it skips every route. Restart
+  and read `/license` after deleting and adding actions.

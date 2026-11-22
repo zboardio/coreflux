@@ -218,36 +218,52 @@ def _perf_mon(raw, out):
         "boot_date": struct.unpack_from(">i", raw, 64)[0], "boot_time": struct.unpack_from(">i", raw, 68)[0],
     }
     rejected = {"empty": 0, "future": 0, "slot": 0, "old": 0, "stamp": 0}
-    records = []
+    records, earlier = [], []
     if record_size != RECORD_SIZE or ring_size <= RING_MARGIN or 72 + ring_size * RECORD_SIZE != len(raw):
         out["error"] = "ring layout: record %d, ring %d, %d bytes" % (record_size, ring_size, len(raw))
         out["rejected"], out["records"] = rejected, records
         return
+    boot_s = _stamp_s(out["header"]["boot_date"], out["header"]["boot_time"])
     for slot in range(ring_size):
         at = 72 + slot * RECORD_SIZE
         rec_seq = struct.unpack_from(">i", raw, at)[0]
         if rec_seq <= 0:
             rejected["empty"] += 1
         elif rec_seq > seq:
-            rejected["future"] += 1
+            # Newer than the header: being written during the read, or a slot of an EARLIER boot that this one has
+            # not overwritten yet. The previous boot's tail is offered when its slot is consistent, its stamp is before
+            # this boot and the next slots to be written are clear of it; plc_ingest() decides which boot it belongs to.
+            stamp_s = _stamp_s(*struct.unpack_from(">ii", raw, at + 4))
+            if ((rec_seq - 1) % ring_size == slot and boot_s is not None and stamp_s is not None and stamp_s < boot_s
+                    and (slot - seq) % ring_size >= RING_MARGIN):
+                earlier.append(_record(raw, at, rec_seq))
+            else:
+                rejected["future"] += 1
         elif (rec_seq - 1) % ring_size != slot:
             rejected["slot"] += 1
         elif rec_seq <= seq - (ring_size - RING_MARGIN):
             rejected["old"] += 1
         else:
-            stamp_date, stamp_time, cycles = struct.unpack_from(">iii", raw, at + 4)
+            stamp_date, stamp_time = struct.unpack_from(">ii", raw, at + 4)
             if not _valid_stamp(stamp_date, stamp_time):
                 rejected["stamp"] += 1
                 continue
-            cyc_min, cyc_max, cyc_avg, comm = struct.unpack_from(">4f", raw, at + 16)
-            records.append({
-                "seq": rec_seq, "stamp_date": stamp_date, "stamp_time": stamp_time, "cycles": cycles,
-                "cyc_min_ms": cyc_min, "cyc_max_ms": cyc_max, "cyc_avg_ms": cyc_avg, "comm_load_pct": comm,
-                "hist": list(struct.unpack_from(">8i", raw, at + 32)),
-                "flags": struct.unpack_from(">H", raw, at + 64)[0], "ob80_cnt": struct.unpack_from(">h", raw, at + 66)[0],
-                "hash": hashlib.md5(raw[at:at + RECORD_SIZE]).hexdigest(),
-            })
+            records.append(_record(raw, at, rec_seq))
     out["rejected"], out["records"] = rejected, records
+    if earlier:
+        out["earlier"] = earlier
+
+
+def _record(raw, at, rec_seq):
+    stamp_date, stamp_time, cycles = struct.unpack_from(">iii", raw, at + 4)
+    cyc_min, cyc_max, cyc_avg, comm = struct.unpack_from(">4f", raw, at + 16)
+    return {
+        "seq": rec_seq, "stamp_date": stamp_date, "stamp_time": stamp_time, "cycles": cycles,
+        "cyc_min_ms": cyc_min, "cyc_max_ms": cyc_max, "cyc_avg_ms": cyc_avg, "comm_load_pct": comm,
+        "hist": list(struct.unpack_from(">8i", raw, at + 32)),
+        "flags": struct.unpack_from(">H", raw, at + 64)[0], "ob80_cnt": struct.unpack_from(">h", raw, at + 66)[0],
+        "hash": hashlib.md5(raw[at:at + RECORD_SIZE]).hexdigest(),
+    }
 
 
 def _bcd(byte):

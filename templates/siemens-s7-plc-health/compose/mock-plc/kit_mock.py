@@ -5,7 +5,13 @@ after a warm restart: the ring still holds a previous boot's slots. It proves th
 The health loop is FC_PerfHealth's: Life moves on only when Echo confirms it, a value that is neither the current nor the
 previous one counts BadEcho, and Age_s past LossLimit_s clears Healthy and counts a loss. A file STOP_FILE puts the mock
 "into STOP": OB1 no longer runs, so Seq, Life and Age_s freeze while the DBs still answer reads. Create it
-with `docker exec <mock> touch /tmp/kit-stop` and remove it to go back to RUN."""
+with `docker exec <mock> touch /tmp/kit-stop` and remove it to go back to RUN.
+
+A power cycle (2026-11-22): with POWER_FILE present, the next gap of more than 3 s in the mock's own clock (`docker pause`
+then `unpause`: the process stood still, as a CPU without power) is a power loss, and the mock comes back as after a
+warm restart: OB884 keeps the boot that ended (DB_PerfDiag 24..35: date, time, last Seq), stamps a new boot, raises the
+restart count and starts Seq at 1, while the ring keeps the old boot's slots, so its last records, written after the
+reader's last read, are still there to be recovered."""
 from __future__ import annotations
 
 import argparse
@@ -22,6 +28,7 @@ from kit_layout import build_health, build_mon, pack_record, stamp
 
 
 STOP_FILE = "/tmp/kit-stop"
+POWER_FILE = "/tmp/kit-powercycle"
 
 
 def main() -> None:
@@ -45,9 +52,23 @@ def main() -> None:
     srv.start(tcp_port=a.port)
     print(f"mock PLC: DB880, DB881, DB882 ({a.family})", flush=True)
     seq, next_close, next_second = 0, time.time() + 1, time.time() + 1
+    last = time.time()
     while True:
         time.sleep(0.01)
         t = time.time()
+        gap, last = t - last, t
+        if gap > 3 and os.path.exists(POWER_FILE):
+            os.remove(POWER_FILE)
+            old_boot = struct.unpack_from(">ii", mon, 64)
+            struct.pack_into(">iii", diag, 24, *old_boot, seq)
+            struct.pack_into(">ii", mon, 64, *stamp(datetime.now(timezone.utc)))
+            struct.pack_into(">h", mon, 14, struct.unpack_from(">h", mon, 14)[0] + 1)
+            seq = 0
+            struct.pack_into(">i", mon, 8, 0)
+            struct.pack_into(">h", mon, 6, -1)
+            next_close, next_second = t + 1, t + 1
+            print(f"mock PLC: power cycle after {gap:.1f} s, boot {old_boot} ended at Seq {struct.unpack_from('>i', diag, 32)[0]}", flush=True)
+            continue
         if os.path.exists(STOP_FILE):
             next_close, next_second = t + 1, t + 1
             continue

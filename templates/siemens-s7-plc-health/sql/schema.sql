@@ -119,6 +119,9 @@ CREATE TABLE IF NOT EXISTS plc_read (
 );
 SELECT create_hypertable('plc_read', 'ts', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE);
 CREATE INDEX IF NOT EXISTS plc_read_path ON plc_read (plc_id, via, db_name, ts DESC);
+-- Records of an EARLIER boot the read offered (2026-11-22): the previous boot's tail, still in the ring after a restart.
+-- How many of them were new to the historian is in plc_cycle (plc_ingest() files them under that boot).
+ALTER TABLE plc_read ADD COLUMN IF NOT EXISTS earlier integer;
 
 -- One per boot, as DB_PerfMon's header names it.
 CREATE TABLE IF NOT EXISTS plc_boot (
@@ -288,6 +291,24 @@ CREATE TABLE IF NOT EXISTS plc_state_change (
     PRIMARY KEY (plc_id, via, signal, ts)
 );
 
+-- The boot a restart's leftover ring slots can belong to (2026-11-22): the boot of this PLC the historian stored last
+-- before the current one (by first_seen, the arrival order a CPU clock cannot disturb), its newest stored record and,
+-- when known, its last Seq from plc_boot_end. SECURITY DEFINER because the writer may INSERT only: it reads these three
+-- tables here and nowhere else, and gets back four numbers and a stamp.
+CREATE OR REPLACE FUNCTION plc_tail_anchor(pid text, cur_date integer, cur_time integer)
+RETURNS TABLE (boot_date integer, boot_time integer, max_seq integer, max_ts timestamptz, last_seq integer)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  WITH p AS (SELECT b.boot_date, b.boot_time FROM plc_boot b
+             WHERE b.plc_id = pid AND NOT (b.boot_date = cur_date AND b.boot_time = cur_time)
+             ORDER BY b.first_seen DESC NULLS LAST, b.ts_boot DESC NULLS LAST LIMIT 1)
+  SELECT p.boot_date, p.boot_time, c.seq, c.ts_plc, e.last_seq
+  FROM p
+  JOIN LATERAL (SELECT x.seq, x.ts_plc FROM plc_cycle x
+                WHERE x.plc_id = pid AND x.boot_date = p.boot_date AND x.boot_time = p.boot_time
+                ORDER BY x.seq DESC LIMIT 1) c ON true
+  LEFT JOIN plc_boot_end e ON e.plc_id = pid AND e.boot_date = p.boot_date AND e.boot_time = p.boot_time
+$$;
+
 CREATE OR REPLACE FUNCTION plc_ingest(msg jsonb) RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
     pid   text := msg->>'plc_id';
@@ -296,6 +317,8 @@ DECLARE
     zone  text;
     hdr   jsonb := msg->'header';
     rej   jsonb := coalesce(msg->'rejected', '{}'::jsonb);
+    prev  record;
+    cur_ts timestamptz;
 BEGIN
     IF kind = 'Register' THEN
         -- The PLC as the broker's decoder declares it (PLCS): added when missing, never overwritten. Its model too, with
@@ -328,10 +351,10 @@ BEGIN
     SELECT clock_zone INTO zone FROM plc_registry WHERE plc_id = pid;
     zone := coalesce(zone, 'UTC');
 
-    INSERT INTO plc_read (plc_id, via, db_name, read_ms, bytes, accepted, rej_empty, rej_future, rej_slot, rej_old, rej_stamp, decode_ms, error)
+    INSERT INTO plc_read (plc_id, via, db_name, read_ms, bytes, accepted, rej_empty, rej_future, rej_slot, rej_old, rej_stamp, decode_ms, error, earlier)
     VALUES (pid, route, kind, (msg->>'read_ms')::integer, (msg->>'bytes')::integer, jsonb_array_length(coalesce(msg->'records', '[]'::jsonb)),
             (rej->>'empty')::integer, (rej->>'future')::integer, (rej->>'slot')::integer, (rej->>'old')::integer, (rej->>'stamp')::integer,
-            (msg->>'decode_ms')::real, msg->>'error');
+            (msg->>'decode_ms')::real, msg->>'error', jsonb_array_length(coalesce(msg->'earlier', '[]'::jsonb)));
     IF msg ? 'error' THEN
         RETURN;
     END IF;
@@ -355,6 +378,40 @@ BEGIN
         SELECT plc_stamp(r.stamp_date, r.stamp_time, zone), pid, route, 'cycle', (hdr->>'boot_date') || '/' || (hdr->>'boot_time') || '/' || r.seq, r.hash
         FROM jsonb_to_recordset(msg->'records') AS r(seq integer, stamp_date integer, stamp_time integer, hash text)
         ON CONFLICT DO NOTHING;
+
+        -- The previous boot's tail (2026-11-22, measured on the 1511): a boot that ends between two reads with no STOP
+        -- the reader can see (a power loss, a download of a few seconds) leaves its last records in the ring, and the new
+        -- boot starts Seq at 1. The decoder offers those slots as "earlier"; they are filed under the boot stored last
+        -- before this one, and only where they CONTINUE it: Seq above its newest stored record, at most its last Seq
+        -- when known, stamped before this boot, and one record a second from that newest record (2 s + 1 % of slack).
+        -- Records of a boot the historian never saw fail that test and are dropped, as before.
+        IF jsonb_array_length(coalesce(msg->'earlier', '[]'::jsonb)) > 0 AND (hdr->>'boot_date')::integer > 0 THEN
+            cur_ts := plc_stamp((hdr->>'boot_date')::integer, (hdr->>'boot_time')::integer, zone);
+            SELECT * INTO prev FROM plc_tail_anchor(pid, (hdr->>'boot_date')::integer, (hdr->>'boot_time')::integer);
+            IF prev.boot_date IS NOT NULL THEN
+                -- Both statements filter with the anchor read once into prev, so they file the same records.
+                INSERT INTO plc_arrival (ts_plc, plc_id, via, kind, fact_key, fact_hash)
+                SELECT t.ts, pid, route, 'cycle', prev.boot_date || '/' || prev.boot_time || '/' || t.seq, t.hash
+                FROM (SELECT plc_stamp(r.stamp_date, r.stamp_time, zone) AS ts, r.*
+                      FROM jsonb_to_recordset(msg->'earlier') AS r(seq integer, stamp_date integer, stamp_time integer, cycles integer,
+                           cyc_min_ms real, cyc_max_ms real, cyc_avg_ms real, comm_load_pct real, hist jsonb, flags integer,
+                           ob80_cnt smallint, hash text)) t
+                WHERE t.seq > prev.max_seq AND (prev.last_seq IS NULL OR t.seq <= prev.last_seq) AND t.ts < cur_ts
+                  AND abs(extract(epoch FROM t.ts - prev.max_ts) - (t.seq - prev.max_seq)) <= 2 + 0.01 * (t.seq - prev.max_seq)
+                ON CONFLICT DO NOTHING;
+
+                INSERT INTO plc_cycle (ts_plc, plc_id, boot_date, boot_time, seq, window_ms, cycles, cyc_min_ms, cyc_max_ms, cyc_avg_ms, comm_load_pct, hist, flags, ob80_cnt)
+                SELECT t.ts, pid, prev.boot_date, prev.boot_time, t.seq, (hdr->>'window_ms')::smallint, t.cycles, t.cyc_min_ms, t.cyc_max_ms,
+                       t.cyc_avg_ms, NULLIF(t.comm_load_pct, -1), ARRAY(SELECT jsonb_array_elements_text(t.hist)::integer), t.flags, t.ob80_cnt
+                FROM (SELECT plc_stamp(r.stamp_date, r.stamp_time, zone) AS ts, r.*
+                      FROM jsonb_to_recordset(msg->'earlier') AS r(seq integer, stamp_date integer, stamp_time integer, cycles integer,
+                           cyc_min_ms real, cyc_max_ms real, cyc_avg_ms real, comm_load_pct real, hist jsonb, flags integer,
+                           ob80_cnt smallint, hash text)) t
+                WHERE t.seq > prev.max_seq AND (prev.last_seq IS NULL OR t.seq <= prev.last_seq) AND t.ts < cur_ts
+                  AND abs(extract(epoch FROM t.ts - prev.max_ts) - (t.seq - prev.max_seq)) <= 2 + 0.01 * (t.seq - prev.max_seq)
+                ON CONFLICT DO NOTHING;
+            END IF;
+        END IF;
 
     ELSIF kind = 'PerfDiag' THEN
         IF (msg#>>'{boot_end,date}')::integer > 0 THEN
