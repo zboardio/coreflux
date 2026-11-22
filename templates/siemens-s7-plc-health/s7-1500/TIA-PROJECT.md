@@ -78,7 +78,7 @@ Set up this way on a CPU 1511-1 PN (firmware V2.6) and on a simulated CPU 1516-3
 
 ## 4. Import the code
 
-1. *External source files → Add new external file →* `plc/health_kit.scl` (called `perf_kit.scl` until 2026-11-22: the blocks it generates have the same names, so a CPU that runs the older source needs no change).
+1. *External source files → Add new external file →* `plc/health_kit.scl`.
 2. Right-click it, *Generate blocks from source.* The file has Windows line endings (CRLF), and must keep them: an older TIA, V15.1 for one, reads the code of a file saved with Unix line endings (LF) as STL and fails on its first statement, while the DBs still compile. If you edit the file, use an editor that keeps CRLF.
 3. Read the result in the *Info* tab. Any error: stop here, and **read the first error, at the top of the list.** The rest usually follow from it.
 

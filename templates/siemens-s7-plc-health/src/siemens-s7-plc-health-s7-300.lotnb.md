@@ -463,12 +463,14 @@ def leaves_of(family):
     return out
 
 
-# The fleet panel (2026-11-22): one table of every PLC and path, built from the UNS itself, so a PLC appears in it the way
-# it appears in the historian, by publishing. S7FleetIndex reacts to <root>/+/+/DeviceStatus, which every PLC's liveness
+# The fleet panel (2026-11-22): one view of every PLC and path, built from the UNS itself, so a PLC appears in it the way it
+# appears in the historian, by publishing. S7FleetIndex reacts to <root>/+/+/DeviceStatus, which every PLC's liveness
 # action republishes every 10 s, and hands fleet() that PLC's newest leaves and the kept table. A row not refreshed for
-# FLEET_SILENT_S says so; one silent for FLEET_KEEP_S leaves the table (a PLC parked or removed).
+# FLEET_SILENT_S says so; one silent for FLEET_KEEP_S leaves the table (a PLC parked or removed). A path that is not online
+# shows its CPU and health as unknown: the leaves it still holds are the last ones before it went.
 FLEET_SILENT_S = 60
 FLEET_KEEP_S = 3600
+MARK = {"good": "\U0001F7E2", "warn": "\U0001F7E1", "bad": "\U0001F534", "none": "\u26AA"}
 
 
 def _value(envelope):
@@ -482,36 +484,92 @@ def _num(value):
         return None
 
 
-def fleet(plc, via, device, scan, health, cyc_avg, cyc_max, boot, fault, kept, now=None):
-    """One PLC path's row merged into the kept fleet. Returns the new state, the rows worst first (a JSON array for a
-    table) and a summary (counts for value tiles), each a finished string."""
+def _hms(seconds):
+    return time.strftime("%H:%M:%S", time.gmtime(seconds))
+
+
+def _short_iso(text):
+    text = str(text or "")
+    return text[:19].replace("T", " ") if len(text) >= 19 else (text or "-")
+
+
+def _grade(row):
+    """good / warn / bad for one stored row, and whether it needs attention."""
+    device, cpu, health = row["device"], row["cpu"], row["health"]
+    if device != "online" or cpu == "not scanning" or health == "corrupt":
+        return "bad"
+    if cpu != "RUN" or health not in ("ok", "-"):
+        return "warn"
+    return "good"
+
+
+def fleet(plc, via, device, scan, health, cyc_avg, cyc_max, boot, fault, kept, grafana="", now=None):
+    """One PLC path's row merged into the kept fleet. Returns, each a finished string: the new state; the rows worst
+    first (a JSON array for a table, every state with its colour mark); a summary (counts and the time, for value tiles);
+    one status line, opening with its colour mark (a text component's colour is not applied by Hub 2.12.0, measured), and
+    its colour name; and the links to each PLC's page in Grafana (markdown), when grafana is a base URL."""
     now = time.time() if now is None else float(now)
     rows = _load(kept)
-    scanning = _value(scan)
+    scanning, dev = _value(scan), _value(device) or "unknown"
+    online = dev == "online"
     rows["%s/%s" % (plc, via)] = {
-        "plc": plc, "path": via, "device": _value(device) or "unknown",
-        "cpu": "RUN" if scanning is True else ("not scanning" if scanning is False else "unknown"),
-        "health": _value(health) or "-", "cycle_avg_ms": _num(_value(cyc_avg)), "cycle_max_ms": _num(_value(cyc_max)),
-        "boot": _value(boot) or "-", "last_fault": str(_value(fault) or "-")[:90], "at": now}
+        "plc": plc, "path": via, "device": dev,
+        "cpu": ("RUN" if scanning is True else ("not scanning" if scanning is False else "unknown")) if online else "unknown",
+        "health": (_value(health) or "-") if online else "unknown",
+        "cycle_avg_ms": _num(_value(cyc_avg)), "cycle_max_ms": _num(_value(cyc_max)),
+        "boot": _short_iso(_value(boot)), "last_fault": str(_value(fault) or "-")[:90], "at": now}
     table = []
     for key in sorted(rows):
-        row = rows[key]
+        row = dict(rows[key])
         age = now - float(row.get("at", 0))
         if age > FLEET_KEEP_S:
             continue
-        shown = dict(row)
         if age > FLEET_SILENT_S:
-            shown["device"] = "silent %d s" % int(age)
-        shown["seen"] = _iso(float(row.get("at", 0)))
-        shown.pop("at", None)
-        shown["ok"] = shown["device"] == "online" and shown["cpu"] == "RUN" and shown["health"] in ("ok", "-")
-        table.append((key, row, shown))
-    kept_out = dict((key, row) for key, row, _ in table)
-    shown = [x[2] for x in sorted(table, key=lambda x: (x[2]["ok"], x[0]))]
-    summary = {"plcs": len(set(r["plc"] for r in shown)), "paths": len(shown),
-               "running": len(set(r["plc"] for r in shown if r["cpu"] == "RUN")),
-               "attention": len([r for r in shown if not r["ok"]]), "at": _iso(now)}
-    return json.dumps({"state": json.dumps(kept_out), "rows": json.dumps(shown), "summary": json.dumps(summary)})
+            row.update(device="silent %d s" % int(age), cpu="unknown", health="unknown")
+        table.append((key, rows[key], row, _grade(row)))
+    rank = {"bad": 0, "warn": 1, "good": 2}
+    table.sort(key=lambda x: (rank[x[3]], x[0]))
+
+    def mark(kind, value):
+        if kind == "cpu":
+            grade = {"RUN": "good", "not scanning": "bad"}.get(value, "none")
+        elif kind == "health":
+            grade = {"ok": "good", "-": "none", "stalled": "warn", "corrupt": "bad"}.get(value, "none")
+        else:
+            grade = "good" if value == "online" else ("warn" if value == "stale" else "bad")
+        return "%s %s" % (MARK[grade], value)
+
+    shown = []
+    for key, stored, row, grade in table:
+        shown.append({"state": MARK[grade], "plc": row["plc"], "path": row["path"], "cpu": mark("cpu", row["cpu"]),
+                      "health": mark("health", row["health"]), "device": mark("device", row["device"]),
+                      "cycle_avg_ms": row["cycle_avg_ms"], "cycle_max_ms": row["cycle_max_ms"],
+                      "boot_utc": row["boot"], "last_fault": row["last_fault"], "seen_utc": _hms(float(stored.get("at", 0)))})
+    bad = [x for x in table if x[3] != "good"]
+    plcs = sorted(set(x[2]["plc"] for x in table))
+    running = sorted(set(x[2]["plc"] for x in table if x[2]["cpu"] == "RUN"))
+    if not bad:
+        status, color = "%s All %d PLCs running, every path online" % (MARK["good"], len(plcs)), "green"
+    else:
+        worst = "; ".join("%s %s %s" % (x[2]["plc"], x[2]["path"], x[2]["device"] if x[2]["device"] != "online" else
+                                        (x[2]["cpu"] if x[2]["cpu"] != "RUN" else x[2]["health"])) for x in bad[:4])
+        status = "%s %d path%s need%s attention: %s" % (MARK[bad[0][3]], len(bad), "" if len(bad) == 1 else "s",
+                                                       "s" if len(bad) == 1 else "", worst)
+        color = "red" if bad[0][3] == "bad" else "orange"
+    summary = {"plcs": len(plcs), "paths": len(table), "running": len(running), "attention": len(bad),
+               "time": _hms(now), "at": _iso(now)}
+    links = ""
+    if grafana:
+        base = grafana.rstrip("/")
+        parts = ["[PLC fleet, history](%s/d/plc-fleet)" % base]
+        for key in plcs:
+            cfg = PLCS.get(key)
+            if cfg:
+                parts.append("[%s, %s](%s/d/plc-detail-%s?var-plc=%s)" % (key, cfg["model"], base, cfg["family"], cfg["plc_id"]))
+        links = " \u00B7 ".join(parts)
+    out = {"state": json.dumps(dict((x[0], x[1]) for x in table)), "rows": json.dumps(shown, ensure_ascii=False),
+           "summary": json.dumps(summary), "status": status, "color": color, "links": links}
+    return json.dumps(out, ensure_ascii=False)
 
 
 def event_text(event_id):
