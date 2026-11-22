@@ -84,7 +84,7 @@ Set up this way on a CPU 1511-1 PN (firmware V2.6) and on a simulated CPU 1516-3
 
 The source names no block numbers, so nothing it generates can overwrite a block of yours. A block of the same **name** would be replaced: check *Program blocks* has none starting with `FC_Perf`, `DB_Perf`, `OB_Perf` or `typPerf` first.
 
-**Updating a CPU that already runs the kit:** generate the source again; the kit's own blocks are replaced, keep their numbers (step 5, a new FC gets the next free number). The DBs and types in the source keep their layout, so the reader needs nothing new. Whether TIA still wants to *reinitialize* a regenerated DB has not been seen yet: read the download's list of actions (step 8). Reinitializing the kit's DBs loses only the kit's own history and counters.
+**Updating a CPU that already runs the kit:** generate the source again; the kit's own blocks are replaced, keep their numbers (step 5, a new FC gets the next free number). The DBs and types in the source keep their layout, so the reader needs nothing new. **A download of *Software (all)* reinitializes the kit's DBs** (seen on a CPU 1511): their actual values go back to the start values, so `RestartCount` starts again at 1 and the previous boot is forgotten. *Retain* keeps values through a power loss and a STOP to RUN, not through a reinitialization. Read the download's list of actions (step 8) and look for *reinitialize*. Reinitializing the kit's DBs loses only the kit's own history and counters; what the reader already stored is kept.
 
 ## 5. Confirm the blocks and set their numbers
 
@@ -351,6 +351,14 @@ Each tag is the OB's own, `#OBxx_` followed by the name in the table. An `MDL_AD
 | OB82, OB83, OB86, OB122 | carries on (OB122: writes the buffer entry and stays in RUN) | nothing more |
 
 A second cycle-time overrun in the same cycle stops the CPU whatever OB80 does. Agree any change of reaction with whoever owns the machine's safety concept.
+
+**Seen on a CPU 1511-1 PN (firmware V2.6), with an ET 200MP station (IM 155-5 PN):**
+- **A station's cable pulled:** OB86 `Event_Class` `39` / `Fault_ID` `CB` (*PROFINET IO device failure*), then `38`/`CB` on its return. The CPU stays in RUN, and the kit's OB86 slot holds the IM's hardware identifier.
+- **A module pulled from the station:** OB83 `39`/`51` (*IO module removed*). The CPU stays in RUN, but the whole station's I/O stops for about 5 s, at the pull and again at the plug.
+- **A module pulled from or plugged into the CPU's own rack in RUN stops the CPU,** configured or not: *Hardware configuration error: Removal (Plugging) of hardware component not permitted*, then a system STOP. No error OB is called, so the kit sees only the restart, and the cause is in the diagnostic buffer alone.
+- **A STARTUP waits for an absent PROFINET device,** up to about a minute, before RUN. `OB_PerfBoot` runs at the end of STARTUP, so the boot stamp is the moment of RUN.
+
+Siemens' system manual says front connectors and I/O modules are removed and inserted only with the voltage switched off. These were bench tests, not a procedure.
 
 ## 8. Compile, compare, download
 

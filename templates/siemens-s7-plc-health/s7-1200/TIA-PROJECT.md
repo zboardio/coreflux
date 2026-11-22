@@ -85,7 +85,7 @@ The kit stamps every record with the CPU's system time, which is UTC. **A CPU th
 - **Use a time server on the machine network** that the CPU reaches: the plant's own, or an edge or gateway that serves NTP. Enter as many as you have. The addresses are your plant's: this guide gives none.
 - **The CPU's time zone does not matter to the kit,** which stamps UTC.
 
-Tried on the S7-1500 kit, set up the same way on a CPU 1511-1 PN and on a simulated CPU 1516-3 PN/DP in S7-PLCSIM Advanced V8.0 Upd1. The simulated CPU's clock, set by hand, was 27 s behind after an hour and a half. Once it was synchronised, records reached the broker 0.5 to 0.6 s after their stamp. **Not tried on an S7-1200 yet.**
+Tried on the S7-1500 kit, set up the same way on a CPU 1511-1 PN and on a simulated CPU 1516-3 PN/DP in S7-PLCSIM Advanced V8.0 Upd1. The simulated CPU's clock, set by hand, was 27 s behind after an hour and a half. Once it was synchronised, records reached the broker 0.5 to 0.6 s after their stamp. On a simulated CPU 1214C G2 (firmware V4.1, same simulator) the clock, set by hand, was 52 s off; once synchronised, records arrived within a second of their stamp. **Not tried on a first-generation S7-1200 yet.**
 
 ## 4. Import the code
 
