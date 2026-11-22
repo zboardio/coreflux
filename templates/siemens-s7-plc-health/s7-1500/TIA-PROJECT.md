@@ -68,6 +68,14 @@ The kit stamps every record with the CPU's system time, which is UTC. **A CPU th
 - Once: *Online & diagnostics → Functions → Set time*, *Take from PG/PC*.
 - To keep it right: *Properties → Time of day → Time synchronization*, NTP, with a server the CPU can reach.
 
+**Good engineering practice: synchronise every CPU from NTP, not only this one.**
+- **A clock set by hand is right only at that moment.** A CPU's clock drifts, and a simulated CPU's clock stands still while its host sleeps.
+- **With NTP, the stamps line up:** the kit's records, the diagnostic buffer, the broker and the historian, across every CPU of the plant. That is what lets you put an event in the buffer next to a record or an alert.
+- **Use a time server on the machine network** that the CPU reaches: the plant's own, or an edge or gateway that serves NTP. Enter as many as you have. The addresses are your plant's: this guide gives none.
+- **The CPU's time zone does not matter to the kit,** which stamps UTC.
+
+Set up this way on a CPU 1511-1 PN (firmware V2.6) and on a simulated CPU 1516-3 PN/DP in S7-PLCSIM Advanced V8.0 Upd1. The simulated CPU's clock, set by hand, was 27 s behind after an hour and a half. Once it was synchronised, records reached the broker 0.5 to 0.6 s after their stamp.
+
 ## 4. Import the code
 
 1. *External source files → Add new external file →* `plc/perf_kit.scl`.
